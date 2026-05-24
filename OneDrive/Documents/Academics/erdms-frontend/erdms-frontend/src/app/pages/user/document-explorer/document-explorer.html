@@ -1,0 +1,191 @@
+<div class="wireframe-container">
+  
+  <aside class="left-sidebar">
+    <div class="user-avatar-area"></div>
+    
+    <nav class="nav-links-stack">
+      <button (click)="navigateToTab('/user/dashboard')" class="nav-tab-btn">
+        <span class="btn-icon">📊</span> Dashboard
+      </button>
+      <button (click)="navigateToTab('/user/document-management')" class="nav-tab-btn active">
+        <span class="btn-icon">📁</span> Document Management
+      </button>
+      <button (click)="navigateToTab('/user/user-profile')" class="nav-tab-btn">
+        <span class="btn-icon">👤</span> Profile
+      </button>
+    </nav>
+  </aside>
+
+  <main class="viewport-main">
+    <header class="top-navbar-bar">
+      <div class="spacer-flex"></div>
+      
+      <div class="profile-trigger-btn" (click)="toggleDropdown()">
+        <span class="u-name">{{ userInfo.name }}</span>
+        <span class="u-role">({{ userInfo.position }})</span>
+      </div>
+
+      <div *ngIf="isDropdownOpen" class="dropdown-bubble-card">
+        <strong style="display: block; font-size: 14px; color: #0f172a;">{{ userInfo.name }}</strong>
+        <small style="display: block; color: #64748b; margin-bottom: 8px;">{{ userInfo.email }}</small>
+        <div style="border-top: 1px solid #e2e8f0; margin: 6px 0;"></div>
+        <button (click)="isDropdownOpen=false; navigateToTab('/user/user-profile')" class="dropdown-item-action-btn">👤 View Profile Workspace</button>
+        <button (click)="executeSignOut()" class="dropdown-item-action-btn sign-out-text">🚪 Log Out</button>
+      </div>
+    </header>
+
+    <div class="main-body-workspace">
+      <div class="identity-badge-row">
+        <div class="badge-text-name">Welcome Back, {{ userInfo.name }}</div>
+      </div>
+
+      <div class="document-management-panel">
+        <div class="panel-heading">My Assigned Workspace Folders</div>
+        
+        <div class="filter-controls-header">
+          <div class="search-input-wrapper">
+            <span class="search-glass-icon">🔍</span>
+            <input type="text" 
+                   name="searchQuery"
+                   [(ngModel)]="searchQuery" 
+                   placeholder="Filter folders or entries by keyword..." 
+                   class="wireframe-search-field" />
+          </div>
+
+          <div class="category-filter-wrapper">
+            <select name="selectedCategory" [(ngModel)]="selectedCategory" class="wireframe-dropdown-select">
+              <option value="All">All Storage Parameters</option>
+              <option value="General">General Node</option>
+              <option value="Specifications">Specifications Node</option>
+              <option value="Finance">Finance Ledger</option>
+              <option value="Legal">Legal Documentation</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="breadcrumb-trail" style="margin: 10px 0; font-size: 14px; color: #64748b; display: flex; gap: 6px; align-items: center;">
+          <span (click)="navigateBackToRoot()" style="cursor: pointer; color: #2563eb; font-weight: 500;">📂 Root Archive</span>
+          <ng-container *ngFor="let crumb of navigationPath; let i = index">
+            <span style="color: #cbd5e1;">/</span>
+            <span (click)="navigateBackTo(i)" style="cursor: pointer; color: #2563eb; font-weight: 500;">{{ crumb.name }}</span>
+          </ng-container>
+        </div>
+
+        <div class="permitted-header-bar">
+          <span class="permitted-title-text">Available Directories and Documents</span>
+          <span class="badge-count">{{ filteredFolders.length + filteredDocuments.length }} Items Found</span>
+        </div>
+
+        <!-- Folders Section -->
+        <div *ngIf="filteredFolders.length > 0" style="margin-bottom: 20px;">
+          <div class="permitted-header-bar" style="background: #f0fdf4; border-top: 2px solid #22c55e; margin-bottom: 0;">
+            <span class="permitted-title-text" style="color: #166534;">📁 Subfolders</span>
+            <span class="badge-count" style="color: #166534;">{{ filteredFolders.length }} Folder(s)</span>
+          </div>
+          <div class="table-scroll-container">
+            <table class="wireframe-data-table">
+              <thead>
+                <tr>
+                  <th style="width: 45%;">Folder Name</th>
+                  <th style="width: 15%;">Status Matrix</th>
+                  <th style="width: 15%;">Node Type</th>
+                  <th style="width: 25%; text-align: center;">Actions Area</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let folder of filteredFolders">
+                  <td>
+                    <div class="file-name-cell">
+                      <span class="file-lead-icon">📁</span>
+                      <div class="file-meta-strings">
+                        <span (click)="drillDownIntoFolder(folder)" style="cursor: pointer; color: #2563eb; font-weight: 600; text-decoration: underline;">
+                          {{ folder.name || folder.title }}
+                        </span>
+                        <small class="file-label-bytes">Folder Directory</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="status-capsule permitted-status">{{ folder.status || 'Permitted' }}</span>
+                  </td>
+                  <td>
+                    <span class="type-capsule-badge">Folder</span>
+                  </td>
+                  <td style="text-align: center;">
+                    <span style="color: #94a3b8; font-size: 13px; font-style: italic;">Click name to open</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Documents Section -->
+        <div *ngIf="filteredDocuments.length > 0 || filteredFolders.length > 0" style="margin-bottom: 20px;">
+          <div class="permitted-header-bar" style="background: #fef3c7; border-top: 2px solid #f59e0b; margin-bottom: 0;">
+            <span class="permitted-title-text" style="color: #92400e;">📄 Documents</span>
+            <span class="badge-count" style="color: #92400e;">{{ filteredDocuments.length }} Document(s)</span>
+          </div>
+          <div class="table-scroll-container" *ngIf="filteredDocuments.length > 0">
+            <table class="wireframe-data-table">
+              <thead>
+                <tr>
+                  <th style="width: 45%;">Document Name</th>
+                  <th style="width: 15%;">Status Matrix</th>
+                  <th style="width: 15%;">Node Type</th>
+                  <th style="width: 25%; text-align: center;">Actions Area</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let doc of filteredDocuments">
+                  <td>
+                    <div class="file-name-cell">
+                      <span class="file-lead-icon">📄</span>
+                      <div class="file-meta-strings">
+                        <span>{{ doc.name || doc.title }}</span>
+                        <small class="file-label-bytes">Allocation Scale: {{ doc.size || 'Shared Portfolio' }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="status-capsule permitted-status">{{ doc.status || 'Permitted' }}</span>
+                  </td>
+                  <td>
+                    <span class="type-capsule-badge">{{ doc.type || 'File' }}</span>
+                  </td>
+                  <td style="text-align: center;">
+                    <button (click)="simulateDownload(doc)" class="action-download-pill-btn">
+                      📥 Download Asset
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div *ngIf="filteredDocuments.length === 0 && filteredFolders.length > 0" class="table-scroll-container">
+            <div style="padding: 20px; text-align: center; color: #94a3b8;">
+              <p>No documents in this folder.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-scroll-container" *ngIf="filteredFolders.length === 0 && filteredDocuments.length === 0">
+          <table class="wireframe-data-table">
+            <tbody>
+              <tr>
+                <td colspan="4" class="empty-fallback-td-row">
+                  <div class="empty-notice-box">
+                    <span class="empty-icon-shield">📂</span>
+                    <p class="empty-state-alert-text">This folder directory level is currently empty.<br><small style="color: #94a3b8; font-weight: 400;">No subfolders or documents matching requirements were located here.</small></p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+</div>

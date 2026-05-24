@@ -1,0 +1,132 @@
+<div class="wireframe-layout">
+  
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">🛡️</div>
+      <div class="brand-text">
+        <h3>ERDMS</h3>
+        <small>Group 4 Platform</small>
+      </div>
+    </div>
+    
+    <nav class="sidebar-menu">
+      <a class="menu-item" (click)="navToDashboard()" style="cursor: pointer;">
+        <span class="icon">🏠</span> Dashboard
+      </a>
+      <a class="menu-item" (click)="navToDocManagement()" style="cursor: pointer;">
+        <span class="icon">📄</span> Document Management
+      </a>
+      <a class="menu-item" (click)="navToUserManagement()" style="cursor: pointer;">
+        <span class="icon">👤</span> User Management
+      </a>
+      <a class="menu-item active" (click)="navToAuditLogs()" style="cursor: pointer;">
+        <span class="icon">🛡️</span> Logs & Audit Trail
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a class="menu-item logout" (click)="executeSignOut()" style="cursor: pointer;">
+        <span class="icon">🚪</span> Sign Out
+      </a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="main-header" style="display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid #e2e8f0;">
+      <div class="header-search" style="display: flex; align-items: center; gap: 8px; flex: 1; max-width: 400px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px;">
+        <span style="color: #64748b;">🔍</span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchQuery" 
+          placeholder="Filter audit entries by details or UID..." 
+          style="border: none; background: transparent; outline: none; width: 100%; font-size: 14px; color: #1e293b;">
+      </div>
+      
+      <div class="header-profile">
+        <div class="profile-avatar">👤</div>
+        <div class="profile-info">
+          <span class="profile-name">Lorenz Gallardo</span>
+          <span class="profile-role">(Admin) 🔀</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-body" style="padding: 20px; display: flex; flex-direction: column; gap: 20px;">
+      
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 13px; font-weight: 600; color: #475569;">Select Event Segment:</span>
+          <select [(ngModel)]="selectedCategory" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; font-size: 13px; color: #334155; outline: none; cursor: pointer;">
+            <option value="ALL">All System Parameters Trace</option>
+            <option value="LOGIN">User Login History Tracker</option>
+            <option value="TRANSFER">Uploads & Downloads Transfers</option>
+            <option value="ACCESS">System Security Access Logs</option>
+          </select>
+        </div>
+
+        <button 
+          style="background-color: #ef4444; color: white; padding: 6px 14px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600; cursor: pointer;"
+          (click)="clearAuditLogTrail()">
+          🚨 Purge Global History
+        </button>
+      </div>
+
+      <div class="wireframe-panel">
+        <div class="panel-header" style="border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
+          <h2 style="margin: 0; font-size: 16px; color: #0f172a;">Global Central System Activity Trace</h2>
+        </div>
+
+        <div class="panel-body" style="padding-top: 10px;">
+          <table class="activity-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="text-align: left; border-bottom: 2px solid #e2e8f0;">
+                <th style="padding: 12px 10px; font-size: 13px; color: #475569; width: 180px;">Timestamp</th>
+                <th style="padding: 12px 10px; font-size: 13px; color: #475569; width: 90px;">Account ID</th>
+                <th style="padding: 12px 10px; font-size: 13px; color: #475569; width: 140px;">Trace Category</th>
+                <th style="padding: 12px 10px; font-size: 13px; color: #475569;">Activity Target Details</th>
+                <th style="padding: 12px 10px; font-size: 13px; color: #475569; width: 110px;">Status Flag</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (log of filteredAuditTrail; track log.logID) {
+                <tr style="border-bottom: 1px solid #f1f5f9; font-size: 13.5px;">
+                  <td style="padding: 14px 10px; color: #2563eb; font-weight: 500; font-family: monospace;">
+                    📅 {{ log.timestamp }}
+                  </td>
+                  <td style="padding: 14px 10px; font-weight: bold; color: #64748b; font-family: monospace;">
+                    UID: {{ log.UID }}
+                  </td>
+                  <td style="padding: 14px 10px;">
+                    <div [ngSwitch]="log.category">
+                      <span *ngSwitchCase="'LOGIN'" style="background: #eff6ff; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">🔐 LOGIN TRACE</span>
+                      <span *ngSwitchCase="'TRANSFER'" style="background: #f0fdf4; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">📦 TRANSFER</span>
+                      <span *ngSwitchCase="'ACCESS'" style="background: #fff7ed; color: #9a3412; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">🛡️ ACCESS LOG</span>
+                    </div>
+                  </td>
+                  <td style="padding: 14px 10px; color: #334155; font-weight: 400;">
+                    {{ log.details }}
+                  </td>
+                  <td style="padding: 14px 10px;">
+                    <span 
+                      [style.background]="log.status === 'Success' ? '#dcfce7' : '#fee2e2'"
+                      [style.color]="log.status === 'Success' ? '#14532d' : '#991b1b'"
+                      style="padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block;">
+                      {{ log.status }}
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" style="text-align: center; color: #94a3b8; padding: 40px; font-style: italic; font-size: 13px;">
+                    No security mutations or operation traces recorded in this system window block.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
