@@ -38,7 +38,7 @@ export interface SystemLog {
   providedIn: 'root'
 })
 export class StateService {
-  // Global arrays initialized directly to prevent empty state check issues on load
+  // 👥 SEEDED DEFAULT ACCOUNTS: Contains 1 Master Admin and 1 Standard User account
   public usersTable: User[] = [
     {
       UID: 1,
@@ -51,81 +51,64 @@ export class StateService {
     },
     {
       UID: 2,
-      name: 'Andrei Luis M. Monfero',
-      email: 'luismonfero@gmail.com',
-      password: 'password123',
-      role_id: 2, // Manager
-      status: 'Active',
-      created_at: 'May 22, 2026'
-    },
-    {
-      UID: 3,
       name: 'Jane Doe',
-      email: 'janedoe@example.com',
-      password: 'password123',
+      email: 'janedoe@erdms.internal',
+      password: 'user123',
       role_id: 3, // Standard User
       status: 'Active',
-      created_at: 'May 24, 2026'
-    },
-    {
-      UID: 4,
-      name: 'System Audit Node',
-      email: 'auditor.hub@erdms.internal',
-      password: 'password123',
-      role_id: 4, // Auditor
-      status: 'Active',
-      created_at: 'May 24, 2026'
+      created_at: 'May 26, 2026'
     }
   ];
 
-  // 📂 SHARED FOLDER/DOCUMENT SYSTEM REGISTER
-  // Both Folder Management (Admin) and Document Explorer (User) point to this reactive array!
-  public foldersTable: FolderItem[] = [
-    {
-      id: 1,
-      name: 'Project Alpha Reports - Permitted',
-      title: 'Project Alpha Reports - Permitted',
-      status: 'Permitted',
-      type: 'Folder',
-      category: 'Specifications',
-      size: 'Shared Portfolio Directory',
-      created_at: 'May 24, 2026',
-      parentId: null,
-      created_by: 1
-    },
-    {
-      id: 2,
-      name: 'Q2 Financial Audit Framework.pdf',
-      title: 'Q2 Financial Audit Framework.pdf',
-      status: 'Permitted',
-      type: 'PDF',
-      category: 'Finance',
-      size: '1.8 MB',
-      created_at: 'May 24, 2026',
-      folderId: 1,
-      created_by: 1
-    },
-    {
-      id: 3,
-      name: 'Corporate Compliance Review.xlsx',
-      title: 'Corporate Compliance Review.xlsx',
-      status: 'Permitted',
-      type: 'XLSX',
-      category: 'Legal',
-      size: '4.2 MB',
-      created_at: 'May 24, 2026',
-      folderId: 1,
-      created_by: 1
-    }
-  ];
+  // 📂 SHARED FOLDER/DOCUMENT SYSTEM REGISTER - Default assets removed cleanly
+  public foldersTable: FolderItem[] = [];
 
   // 📝 SYSTEM LIVE AUDIT TRAILS ARRAY
   public logsTable: SystemLog[] = [];
 
   // Tracks the active identity matrix record across route updates (Defaults to Admin for safety)
-  public currentUserUID: number = 1;
+  public currentUserUID: number = 2;
 
-  constructor() {}
+  // Property fallbacks to guarantee that Dashboard/Folder Management don't break on unexpected lookups
+  public foldersTree: any[] = [];
+  public lastActiveFolderId: number | null = null;
+  public auditTable: any[] = [];
+
+  constructor() {
+    this.loadStateFromStorage();
+  }
+
+  // 💾 SEEDS DATA FROM COMPUTER STORAGE SO ACTIONS NEVER DISAPPEAR ACROSS TABS
+  private loadStateFromStorage() {
+    const savedTree = localStorage.getItem('erdms_folders_tree');
+    const savedTable = localStorage.getItem('erdms_folders_table');
+    const savedUsers = localStorage.getItem('erdms_users_table');
+    const savedLogs = localStorage.getItem('erdms_audit_table');
+
+    if (savedTree) this.foldersTree = JSON.parse(savedTree);
+    if (savedTable) this.foldersTable = JSON.parse(savedTable);
+    if (savedUsers) this.usersTable = JSON.parse(savedUsers);
+    if (savedLogs) this.logsTable = JSON.parse(savedLogs);
+
+    // Initialize root folder into foldersTree structure if empty
+    if (this.foldersTree.length === 0) {
+      this.foldersTree = [
+        {
+          folder_id: 1,
+          folder_name: 'Root Archive Matrix',
+          created_by: 1,
+          created_at: 'May 20, 2026',
+          permission: 'Public',
+          parent_id: null,
+          subfolders: [],
+          documents: []
+        }
+      ];
+    }
+    
+    // Create an alias reference to sync auditTable and logsTable together
+    this.auditTable = this.logsTable;
+  }
 
   // System role descriptive utility
   getRoleName(roleId: number): string {
@@ -153,10 +136,15 @@ export class StateService {
 
     this.logsTable.unshift(newLog); // Pushes newest logs to the top
     console.log(`[LOG REGISTERED] User #${userUid} (${userNameStr}): ${actionDescription}`);
+    this.persistDataChanges();
   }
 
-  // Persist alterations tracking stub
+  // 🔒 COMMITS SYSTEM ARCHIVE FOOTPRINTS DIRECTLY ONTO LAPTOP HARD DRIVE
   persistDataChanges(): void {
-    console.log('[STATE STUB] Changes written to client-side simulated state.');
+    localStorage.setItem('erdms_folders_tree', JSON.stringify(this.foldersTree));
+    localStorage.setItem('erdms_folders_table', JSON.stringify(this.foldersTable));
+    localStorage.setItem('erdms_users_table', JSON.stringify(this.usersTable));
+    localStorage.setItem('erdms_audit_table', JSON.stringify(this.logsTable));
+    console.log('💾 Checkpoint saved: All structural data committed permanently.');
   }
 }

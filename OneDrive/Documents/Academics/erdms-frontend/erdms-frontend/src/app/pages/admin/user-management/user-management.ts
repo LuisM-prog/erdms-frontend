@@ -16,7 +16,6 @@ export class UserManagementComponent implements OnInit {
   isEditing = false;
   editingUserUid: number | null = null;
   
-  // LIVE FILTERS / INTERACTION STATE BINDINGS
   searchQuery = '';
   filterRoles: { [key: number]: boolean } = {
     1: true, // Admin
@@ -25,7 +24,6 @@ export class UserManagementComponent implements OnInit {
     4: true  // Auditor
   };
 
-  // UI Form Input Model Properties
   inputUsername = '';
   inputFullName = ''; 
   inputEmail = '';
@@ -35,9 +33,8 @@ export class UserManagementComponent implements OnInit {
   constructor(private router: Router, public state: StateService) {}
 
   ngOnInit(): void {
-    // 👥 REMOVED DEFAULT MOCK USERS: Array initializes clean.
-    // Preserves only the active running admin context to prevent locking out your active session.
-    if (!this.state.usersTable || this.state.usersTable.length === 0) {
+    // Clean initial state logic: Retains only the active running admin context to prevent session lockout
+    if (!this.state.usersTable || this.state.usersTable.length <= 1) {
       const activeAdminUID = this.state.currentUserUID || 1;
       this.state.usersTable = [
         {
@@ -45,7 +42,7 @@ export class UserManagementComponent implements OnInit {
           name: 'Administrator',
           email: 'admin@erdms.internal',
           password: 'password123',
-          role_id: 1, // Administrator role definition requirement code matching routing hooks
+          role_id: 1, 
           status: 'Active',
           created_at: new Date().toLocaleDateString()
         }
@@ -53,12 +50,10 @@ export class UserManagementComponent implements OnInit {
     }
   }
 
-  // Direct source data array stream accessor
   get usersList(): User[] {
     return this.state.usersTable || [];
   }
 
-  // Combined text lookup query evaluation + role matrix validation lookup rule filtering
   get filteredUsersList(): User[] {
     return this.usersList.filter(user => {
       const nameMatch = user.name ? user.name.toLowerCase().includes(this.searchQuery.toLowerCase()) : false;
@@ -73,7 +68,7 @@ export class UserManagementComponent implements OnInit {
     return this.state.getRoleName(roleId);
   }
 
-  // Navigation handlers 
+  // Sidebar Layout Navigation Link Handlers
   navToDashboard() { this.router.navigate(['/admin/dashboard']); }
   navToDocManagement() { this.router.navigate(['/admin/folder-management']); }
   navToUserManagement() { this.router.navigate(['/admin/user-management']); }
@@ -85,8 +80,6 @@ export class UserManagementComponent implements OnInit {
     }
   }
 
-  // --- ACTIONS SYSTEM WORKING FLOWS ---
-
   openCreateModal() {
     this.isEditing = false;
     this.resetForm();
@@ -96,13 +89,11 @@ export class UserManagementComponent implements OnInit {
   openEditModal(user: User) {
     this.isEditing = true;
     this.editingUserUid = user.UID;
-    
     this.inputUsername = user.email ? user.email.split('@')[0] : '';
     this.inputFullName = user.name;
     this.inputEmail = user.email;
     this.inputPassword = user.password || '';
     this.selectedRoleId = user.role_id;
-    
     this.showCreateModal = true;
   }
 
@@ -124,7 +115,6 @@ export class UserManagementComponent implements OnInit {
         userRecord.email = this.inputEmail.trim();
         userRecord.password = this.inputPassword.trim();
         userRecord.role_id = Number(this.selectedRoleId);
-        
         this.state.writeLogEntry(this.state.currentUserUID, `Updated details and roles for user UID: #${userRecord.UID}`);
       }
     } else {

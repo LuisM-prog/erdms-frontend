@@ -1,151 +1,145 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms'; // ◄ Imported to fix the [(ngModel)] compilation errors
 import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
-
-interface SystemLogEntity {
-  timestamp: string;
-  user_uid: number;
-  action_executed_description?: string;
-  action_description?: string;
-  description?: string;
-  message?: string;
-}
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule], // ◄ Added FormsModule here so template can bind inputs
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
 export class DashboardComponent implements OnInit {
-  logSearchQuery: string = '';
-  selectedLogTypeFilter: string = 'All Logs';
+  // 🔍 Interactive Log Filtering Model Fields expected by your template
+  logSearchQuery = '';
+  selectedLogTypeFilter = 'ALL';
 
-  constructor(public router: Router, public state: StateService) {}
+  constructor(private router: Router, public state: StateService) {}
 
   ngOnInit(): void {
-    if (!(this.state as any).usersTable) {
-      (this.state as any).usersTable = [
-        { uid: '#', name: 'Lorenz Gallardo', email: 'renzpogl1@gmail.com', role: 'Admin', status: 'Active' },
-        { uid: '#', name: 'andrei luis m monfero', email: 'luismonfeo@gmail.com', role: 'User', status: 'Active' }
-      ];
-    }
-    if (!(this.state as any).documentsTable) {
-      (this.state as any).documentsTable = [];
-    }
+    // Structural safeguards to make sure state arrays exist upon dashboard loading
+    if (!(this.state as any).foldersTree) (this.state as any).foldersTree = [];
+    if (!(this.state as any).usersTable) (this.state as any).usersTable = [];
+    if (!(this.state as any).auditTable) (this.state as any).auditTable = [];
   }
 
+  // 👥 Maps directly to {{ totalRegisteredUsers }}
   get totalRegisteredUsers(): number {
-    return Array.isArray(this.state.usersTable) ? this.state.usersTable.length : 2;
+    return this.state.usersTable ? this.state.usersTable.length : 0;
   }
 
+  // 🟢 Maps directly to {{ activeUsersCount }}
   get activeUsersCount(): number {
-    if (!Array.isArray(this.state.usersTable)) return 2;
-    return this.state.usersTable.filter((u: any) => u.status === 'Active').length;
+    if (!this.state.usersTable) return 0;
+    return this.state.usersTable.filter(u => u.status === 'Active').length;
   }
 
+  // 📝 Maps directly to {{ totalUploadedDocuments }}
   get totalUploadedDocuments(): number {
+    const tree = (this.state as any).foldersTree || [];
+    return this.countDocumentsRecursive(tree);
+  }
+
+  private countDocumentsRecursive(nodes: any[]): number {
     let count = 0;
-    if (Array.isArray((this.state as any).documentsTable)) {
-      count += (this.state as any).documentsTable.length;
-    }
-    const countDocsInNode = (node: any) => {
-      if (!node) return;
-      if (Array.isArray(node.documents)) count += node.documents.length;
-      if (Array.isArray(node.subfolders)) node.subfolders.forEach(countDocsInNode);
-    };
-    if (Array.isArray((this.state as any).foldersStructure)) {
-      (this.state as any).foldersStructure.forEach(countDocsInNode);
-    }
-    return count === 0 ? 2 : count;
-  }
-
-  get activeEngagementRatio(): number {
-    return 100;
-  }
-
-  get averageAssetsPerDirectory(): number {
-    return 2;
-  }
-
-  get systemActionVelocity(): string {
-    const logs = this.allGlobalLogs;
-    if (logs.length > 15) return 'High Stress';
-    if (logs.length > 5) return 'Medium Intensity';
-    return 'Low Intensity';
-  }
-
-  get allGlobalLogs(): SystemLogEntity[] {
-    const stateObj = this.state as any;
-    let combined: SystemLogEntity[] = [];
-    if (Array.isArray(stateObj.logsTable)) combined = combined.concat(stateObj.logsTable);
-    if (Array.isArray(stateObj.auditTable)) combined = combined.concat(stateObj.auditTable);
-    if (Array.isArray(stateObj.auditLogs)) combined = combined.concat(stateObj.auditLogs);
-
-    const stringify = (l: any) => JSON.stringify(l);
-    const seen = new Set<string>();
-    return combined.filter(item => {
-      const hash = `${item.timestamp}_${item.user_uid}_${this.extractLogText(item)}`;
-      if (seen.has(hash)) return false;
-      seen.add(hash);
-      return true;
-    }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }
-
-  get filteredGlobalLogs(): SystemLogEntity[] {
-    return this.allGlobalLogs.filter(log => {
-      const text = this.extractLogText(log);
-      const query = this.logSearchQuery.toLowerCase().trim();
-      const matchesText = !query || text.toLowerCase().includes(query) || String(log.user_uid).includes(query);
-
-      let matchesType = true;
-      if (this.selectedLogTypeFilter === 'Modifications') {
-        matchesType = text.toLowerCase().includes('alter') || text.toLowerCase().includes('update') || text.toLowerCase().includes('rename') || text.toLowerCase().includes('change');
-      } else if (this.selectedLogTypeFilter === 'Uploads') {
-        matchesType = text.toLowerCase().includes('upload') || text.toLowerCase().includes('bind') || text.toLowerCase().includes('asset');
-      } else if (this.selectedLogTypeFilter === 'Deletions') {
-        matchesType = text.toLowerCase().includes('purge') || text.toLowerCase().includes('delete') || text.toLowerCase().includes('remove');
+    for (const node of nodes) {
+      if (node.documents) {
+        count += node.documents.length;
       }
+      if (node.subfolders && node.subfolders.length > 0) {
+        count += this.countDocumentsRecursive(node.subfolders);
+      }
+    }
+    return count;
+  }
 
-      return matchesText && matchesType;
+  // 📊 Maps directly to {{ activeEngagementRatio }}
+  get activeEngagementRatio(): number {
+    const total = this.totalRegisteredUsers;
+    if (total === 0) return 0;
+    const active = this.activeUsersCount;
+    return Math.round((active / total) * 100);
+  }
+
+  // 📁 Maps directly to {{ averageAssetsPerDirectory }}
+  get averageAssetsPerDirectory(): number {
+    const totalDocs = this.totalUploadedDocuments;
+    
+    // Counts folders using recursive scanning
+    const tree = (this.state as any).foldersTree || [];
+    const totalFolders = this.countFoldersRecursive(tree);
+    
+    if (totalFolders === 0) return totalDocs;
+    return Number((totalDocs / totalFolders).toFixed(1));
+  }
+
+  private countFoldersRecursive(nodes: any[]): number {
+    let count = 0;
+    for (const node of nodes) {
+      count++;
+      if (node.subfolders && node.subfolders.length > 0) {
+        count += this.countFoldersRecursive(node.subfolders);
+      }
+    }
+    return count;
+  }
+
+  // ⚡ Maps directly to {{ systemActionVelocity }}
+  get systemActionVelocity(): string {
+    const counts = this.allGlobalLogs.length;
+    if (counts === 0) return 'Stable System State';
+    if (counts < 5) return 'Low Traffic Matrix';
+    return 'Active Operational Flow';
+  }
+
+  // 🛡️ Maps directly to @if (allGlobalLogs.length) and loops
+  get allGlobalLogs(): any[] {
+    return (this.state as any).auditTable || [];
+  }
+
+  // 🔍 Maps directly to @for (log of filteredGlobalLogs)
+  get filteredGlobalLogs(): any[] {
+    const logs = this.allGlobalLogs;
+    return logs.filter(log => {
+      if (!log) return false;
+      
+      const text = this.extractLogText(log).toLowerCase();
+      const uid = log.UID ? log.UID.toLowerCase() : '';
+      const matchesSearch = text.includes(this.logSearchQuery.toLowerCase()) || uid.includes(this.logSearchQuery.toLowerCase());
+      
+      const category = log.category || 'ACCESS';
+      const matchesFilter = this.selectedLogTypeFilter === 'ALL' || category === this.selectedLogTypeFilter;
+      
+      return matchesSearch && matchesFilter;
     });
   }
 
-  extractLogText(log: SystemLogEntity): string {
+  // 📝 Maps directly to {{ extractLogText(log) }}
+  extractLogText(log: any): string {
     if (!log) return '';
-    return log.action_description || log.action_executed_description || log.description || log.message || 'System baseline event triggered';
+    return log.action_executed_description || log.action_description || log.details || log.description || log.message || 'System Operation Trace Recorded';
   }
 
+  // 🗑️ Maps directly to (click)="purgeEntireGlobalAuditHistory()"
   purgeEntireGlobalAuditHistory() {
-    if (confirm('CRITICAL ACTION: Are you sure you want to permanently clear the global system audit log history? This cannot be undone.')) {
+    if (confirm('Are you completely certain you want to purge the global historical log buffer?')) {
+      (this.state as any).auditTable = [];
       (this.state as any).logsTable = [];
-      if ((this.state as any).auditTable) (this.state as any).auditTable = [];
-      if ((this.state as any).auditLogs) (this.state as any).auditLogs = [];
+      (this.state as any).auditLogs = [];
       this.state.persistDataChanges();
     }
   }
 
-  navToDashboard() { 
-    this.router.navigate(['/admin/dashboard']); 
-  }
-  
-  navToDocManagement() { 
-    this.router.navigate(['/admin/folder-management']); 
-  }
-  
-  navToUserManagement() { 
-    this.router.navigate(['/admin/user-management']); 
-  }
-  
-  navToAuditLogs() {
-    this.router.navigate(['/admin/audit-logs']);
-  }
+  // 🧭 SIDEBAR LINK ROUTING HANDLERS
+  navToDashboard() { this.router.navigate(['/admin/dashboard']); }
+  navToDocManagement() { this.router.navigate(['/admin/folder-management']); }
+  navToUserManagement() { this.router.navigate(['/admin/user-management']); }
+  navToAuditLogs() { this.router.navigate(['/admin/audit-logs']); }
 
   executeSignOut() {
-    if (confirm('Security Session Termination: Are you sure you want to exit the ERDMS administrative desk?')) {
+    if (confirm('Are you sure you want to sign out?')) {
       this.router.navigate(['/login']);
     }
   }

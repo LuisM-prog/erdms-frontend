@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule, NgSwitch, NgSwitchCase } from '@angular/common'; 
+import { CommonModule } from '@angular/common'; 
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { StateService } from '../../../services/state';
+import { StateService, SystemLog } from '../../../services/state';
 
-export interface SystemAuditLog {
+export interface UIStructuredLog {
   logID: number;
   timestamp: string;
   UID: string;
@@ -16,26 +16,49 @@ export interface SystemAuditLog {
 @Component({
   selector: 'app-logs-audit',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgSwitch, NgSwitchCase], 
+  imports: [CommonModule, FormsModule], 
   templateUrl: './logs-audit.component.html',
   styleUrl: './logs-audit.component.css'
 })
 export class LogsAuditComponent implements OnInit {
-  // LIVE AUDIT MATRIX INTERACTIVE FILTER MODEL FIELDS
   searchQuery = '';
   selectedCategory = 'ALL';
-
-  // COMPLETE TRACE DATA STORAGE MAPPED TO SPECIFIED USE CASES
-  auditLogsList: SystemAuditLog[] = [];
 
   constructor(private router: Router, public state: StateService) {}
 
   ngOnInit(): void {
-    this.loadMockSystemAuditTrail();
+    // Verifies data layer tables are alive and assigned
+    if (!this.state.logsTable) {
+      this.state.logsTable = [];
+    }
   }
 
-  // CORE USE CASE: FILTERS LOG ENTRIES BY SEARCH QUERIES AND SPECIFIC CATEGORIES
-  get filteredAuditTrail(): SystemAuditLog[] {
+  // Live historical tracking stream accessor mapping directly to your shared State registers
+  get auditLogsList(): UIStructuredLog[] {
+    const records = this.state.logsTable || [];
+    return records.map((log: SystemLog) => {
+      // Intelligently parse category type from action text signatures
+      let inferredCategory: 'LOGIN' | 'TRANSFER' | 'ACCESS' = 'ACCESS';
+      const actionText = (log.action || '').toUpperCase();
+      
+      if (actionText.includes('LOGIN') || actionText.includes('SIGN OUT')) {
+        inferredCategory = 'LOGIN';
+      } else if (actionText.includes('UPLOAD') || actionText.includes('FILE') || actionText.includes('ASSET')) {
+        inferredCategory = 'TRANSFER';
+      }
+
+      return {
+        logID: log.id || 100,
+        timestamp: log.timestamp || new Date().toLocaleString(),
+        UID: `#${log.userUid || 1}`,
+        category: inferredCategory,
+        details: log.action || 'System action trace recorded.',
+        status: 'Success'
+      };
+    });
+  }
+
+  get filteredAuditTrail(): UIStructuredLog[] {
     return this.auditLogsList.filter(log => {
       const matchesSearch = 
         log.details.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
@@ -48,7 +71,7 @@ export class LogsAuditComponent implements OnInit {
     });
   }
 
-  // HANDLES ROUTER SIDEBAR DELEGATES
+  // Sidebar Layout Navigation Link Handlers
   navToDashboard() { this.router.navigate(['/admin/dashboard']); }
   navToDocManagement() { this.router.navigate(['/admin/folder-management']); }
   navToUserManagement() { this.router.navigate(['/admin/user-management']); }
@@ -60,16 +83,11 @@ export class LogsAuditComponent implements OnInit {
     }
   }
 
-  // COMPONENT ACTION HANDLER: CLEARS CURRENT TRACE EVENT LIST VIEW
   clearAuditLogTrail() {
     if (confirm('Are you completely certain you want to purge all security traces from this view?')) {
-      this.auditLogsList = [];
+      this.state.logsTable = [];
+      if ((this.state as any).auditTable) (this.state as any).auditTable = [];
+      this.state.persistDataChanges();
     }
-  }
-
-  // 📝 REMOVED GLOBAL SYSTEM ACTIVITY TRACE MOCKS:
-  // Starts with a clean array state layout framework so that only actual runtime events display.
-  private loadMockSystemAuditTrail() {
-    this.auditLogsList = [];
   }
 }

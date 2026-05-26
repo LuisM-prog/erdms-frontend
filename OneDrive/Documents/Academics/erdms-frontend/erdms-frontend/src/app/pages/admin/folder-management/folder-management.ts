@@ -31,8 +31,8 @@ interface FolderNode {
   selector: 'app-folder-management',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './folder-management.html',
-  styleUrl: './folder-management.css'
+  templateUrl: './folder-management.html', // ◄ Matched to your template naming pattern
+  styleUrl: './folder-management.css'     // ◄ Matched to your styling naming pattern
 })
 export class FolderManagementComponent implements OnInit {
   currentFolder: FolderNode | null = null;
@@ -64,8 +64,6 @@ export class FolderManagementComponent implements OnInit {
   constructor(private router: Router, public state: StateService) {}
 
   ngOnInit(): void {
-    // 💾 SHARED GLOBAL INSTANCE PRESERVATION:
-    // Check if the folders tree already exists on the persistent StateService before initializing a clean root node.
     if (!(this.state as any).foldersTree || (this.state as any).foldersTree.length === 0) {
       (this.state as any).foldersTree = [
         {
@@ -84,20 +82,16 @@ export class FolderManagementComponent implements OnInit {
     if (!(this.state as any).foldersTable) (this.state as any).foldersTable = [];
     if (!(this.state as any).documentsTable) (this.state as any).documentsTable = [];
 
-    // Ensure all log tracking vectors exist permanently on the state model instance
     ['auditTable', 'logsTable', 'auditLogs'].forEach(tableName => {
       if (!(this.state as any)[tableName]) {
         (this.state as any)[tableName] = [];
       }
     });
 
-    // Determine current position safely from state context or fall back to the global tree root element
     const tree = (this.state as any).foldersTree;
     if (tree && tree.length > 0) {
-      // Retain folder path alignment if a previous session pointer exists
       const savedFolderId = (this.state as any).lastActiveFolderId;
       const foundFolder = savedFolderId ? this.findNodeInTree(tree, savedFolderId) : null;
-      
       this.navigateToFolder(foundFolder || tree[0]);
     }
   }
@@ -106,7 +100,6 @@ export class FolderManagementComponent implements OnInit {
     return (this.state as any).foldersTree || [];
   }
 
-  // 📂 Traverses deep inside recursive branch configurations
   findNodeInTree(nodes: FolderNode[], targetId: number | null): FolderNode | null {
     if (targetId === null) return null;
     for (const node of nodes) {
@@ -124,7 +117,6 @@ export class FolderManagementComponent implements OnInit {
     this.editingFolderName = folder.folder_name;
     this.editingFolderPermission = folder.permission;
     
-    // Save active folder index parameter inside StateService so navigation recalls where you were
     (this.state as any).lastActiveFolderId = folder.folder_id;
 
     this.navigationPath = [];
@@ -224,12 +216,29 @@ export class FolderManagementComponent implements OnInit {
       return;
     }
 
+    // 🔒 Persistent memory lock: Updates the master instance inside the service tree directly
+    const masterTree = (this.state as any).foldersTree || [];
+    const targetNode = this.findNodeInTree(masterTree, this.currentFolder.folder_id);
+    
     const oldName = this.currentFolder.folder_name;
     const oldPermission = this.currentFolder.permission;
     
     if (oldName !== this.editingFolderName.trim() || oldPermission !== this.editingFolderPermission) {
       this.currentFolder.folder_name = this.editingFolderName.trim();
       this.currentFolder.permission = this.editingFolderPermission;
+      
+      if (targetNode) {
+        targetNode.folder_name = this.editingFolderName.trim();
+        targetNode.permission = this.editingFolderPermission;
+      }
+
+      if (this.state.foldersTable) {
+        const tableItem = this.state.foldersTable.find(f => f.id === this.currentFolder?.folder_id);
+        if (tableItem) {
+          tableItem.name = this.editingFolderName.trim();
+          tableItem.title = this.editingFolderName.trim();
+        }
+      }
       
       const updateMessage = `Updated workspace directory details: "${oldName}" renamed to "${this.currentFolder.folder_name}" (Folder ID: #${this.currentFolder.folder_id})`;
       this.generateUnifiedLogEntry(updateMessage);
@@ -266,10 +275,17 @@ export class FolderManagementComponent implements OnInit {
       documents: []
     };
 
-    if (!this.currentFolder.subfolders) {
-      this.currentFolder.subfolders = [];
+    // 💾 Global State Synchronization Logic
+    const masterTree = (this.state as any).foldersTree || [];
+    const masterParentNode = this.findNodeInTree(masterTree, this.currentFolder.folder_id);
+    
+    if (masterParentNode) {
+      if (!masterParentNode.subfolders) masterParentNode.subfolders = [];
+      masterParentNode.subfolders.push(newChild);
+    } else {
+      if (!this.currentFolder.subfolders) this.currentFolder.subfolders = [];
+      this.currentFolder.subfolders.push(newChild);
     }
-    this.currentFolder.subfolders.push(newChild);
 
     if (this.state.foldersTable) {
       this.state.foldersTable.push({
@@ -288,7 +304,7 @@ export class FolderManagementComponent implements OnInit {
     const logMsg = `Created subfolder branch: "${newChild.folder_name}" inside parent folder "${this.currentFolder.folder_name}" (Parent ID: #${this.currentFolder.folder_id}, New Folder ID: #${nextId})`;
     this.generateUnifiedLogEntry(logMsg);
 
-    this.state.persistDataChanges();
+    this.state.persistDataChanges(); // ◄ Force hard savings trace onto storage parameters
     this.showFolderModal = false;
   }
 
@@ -297,8 +313,15 @@ export class FolderManagementComponent implements OnInit {
     if (confirm(`Purge subfolder directory "${folderToDelete.folder_name}" along with all internal files and folders nested below it?`)) {
       if (!this.currentFolder) return;
 
-      this.currentFolder.subfolders = this.currentFolder.subfolders.filter(f => f.folder_id !== folderToDelete.folder_id);
+      // Clean out references globally
+      const masterTree = (this.state as any).foldersTree || [];
+      const masterParentNode = this.findNodeInTree(masterTree, this.currentFolder.folder_id);
       
+      if (masterParentNode) {
+        masterParentNode.subfolders = (masterParentNode.subfolders || []).filter(f => f.folder_id !== folderToDelete.folder_id);
+      }
+      this.currentFolder.subfolders = (this.currentFolder.subfolders || []).filter(f => f.folder_id !== folderToDelete.folder_id);
+
       if (this.state.foldersTable) {
         this.state.foldersTable = this.state.foldersTable.filter(f => f.id !== folderToDelete.folder_id);
       }
@@ -306,7 +329,7 @@ export class FolderManagementComponent implements OnInit {
       const deleteMessage = `Purged nested folder tree entity: "${folderToDelete.folder_name}" (Folder ID: #${folderToDelete.folder_id})`;
       this.generateUnifiedLogEntry(deleteMessage);
 
-      this.state.persistDataChanges();
+      this.state.persistDataChanges(); // ◄ Sync changes down onto state layers
       this.autoSelectFirstDocument();
     }
   }
@@ -364,8 +387,17 @@ export class FolderManagementComponent implements OnInit {
       created_at: this.getNowTimeStamp()
     };
 
-    if (!this.currentFolder.documents) this.currentFolder.documents = [];
-    this.currentFolder.documents.push(newDoc);
+    // Append to global source arrays so it persists across other links
+    const masterTree = (this.state as any).foldersTree || [];
+    const masterParentNode = this.findNodeInTree(masterTree, this.currentFolder.folder_id);
+
+    if (masterParentNode) {
+      if (!masterParentNode.documents) masterParentNode.documents = [];
+      masterParentNode.documents.push(newDoc);
+    } else {
+      if (!this.currentFolder.documents) this.currentFolder.documents = [];
+      this.currentFolder.documents.push(newDoc);
+    }
 
     if (this.state.foldersTable) {
       const fileExt = this.selectedFile.name.split('.').pop()?.toUpperCase() || 'FILE';
@@ -387,7 +419,7 @@ export class FolderManagementComponent implements OnInit {
     const docMessage = `Uploaded asset node: "${this.inputDocTitle.trim()}" into workspace branch folder "${this.currentFolder.folder_name}" (Folder ID: #${this.currentFolder.folder_id}, Sequenced Doc ID: #${nextDocId})`;
     this.generateUnifiedLogEntry(docMessage);
 
-    this.state.persistDataChanges();
+    this.state.persistDataChanges(); // ◄ Saves permanently 
     this.selectedDocumentId = nextDocId; 
     this.showDocModal = false;
   }
@@ -397,8 +429,14 @@ export class FolderManagementComponent implements OnInit {
     if (confirm(`Purge document node entry "${doc.title}" from this directory segment?`)) {
       if (!this.currentFolder) return;
 
+      const masterTree = (this.state as any).foldersTree || [];
+      const masterParentNode = this.findNodeInTree(masterTree, this.currentFolder.folder_id);
+
+      if (masterParentNode) {
+        masterParentNode.documents = (masterParentNode.documents || []).filter(d => d.document_id !== doc.document_id);
+      }
       this.currentFolder.documents = (this.currentFolder.documents || []).filter(d => d.document_id !== doc.document_id);
-      
+
       if (this.state.foldersTable) {
         this.state.foldersTable = this.state.foldersTable.filter(f => f.title !== doc.title);
       }
@@ -406,7 +444,7 @@ export class FolderManagementComponent implements OnInit {
       const removeDocMessage = `Removed file node item: "${doc.title}" (Doc ID: #${doc.document_id})`;
       this.generateUnifiedLogEntry(removeDocMessage);
 
-      this.state.persistDataChanges();
+      this.state.persistDataChanges(); // ◄ Save deletion trace state
       if (this.selectedDocumentId === doc.document_id) {
         this.autoSelectFirstDocument();
       }
@@ -449,7 +487,7 @@ export class FolderManagementComponent implements OnInit {
 
   getLogMessageText(log: any): string {
     if (!log) return '';
-    return log.action_executed_description || log.action_description || log.description || log.message || 'System Log Activity';
+    return log.action_executed_description || log.action_description || log.details || log.description || log.message || 'System Log Activity';
   }
 
   getNowTimeStamp(): string {
@@ -467,10 +505,7 @@ export class FolderManagementComponent implements OnInit {
     }
 
     ['auditTable', 'logsTable', 'auditLogs'].forEach(tableName => {
-      if (!(this.state as any)[tableName]) {
-        (this.state as any)[tableName] = [];
-      }
-      
+      if (!(this.state as any)[tableName]) (this.state as any)[tableName] = [];
       const arr = (this.state as any)[tableName];
       if (Array.isArray(arr)) {
         arr.push({
@@ -483,8 +518,10 @@ export class FolderManagementComponent implements OnInit {
     });
   }
 
+  // Sidebar Layout Navigation Link Handlers
   navToDashboard() { this.router.navigate(['/admin/dashboard']); }
   navToDocManagement() { this.router.navigate(['/admin/folder-management']); }
   navToUserManagement() { this.router.navigate(['/admin/user-management']); }
+  navToAuditLogs() { this.router.navigate(['/admin/audit-logs']); }
   executeSignOut() { if (confirm('Sign out?')) this.router.navigate(['/login']); }
 }
