@@ -1,0 +1,215 @@
+:host {
+  display: block;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.wireframe-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: #f8fafc;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.left-sidebar {
+  width: 260px;
+  min-width: 260px;
+  background-color: #0b1329;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+  padding-bottom: 20px;
+}
+
+.user-avatar-area {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar-area::before {
+  content: '🛡️ ERDMS';
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.user-avatar-area::after {
+  content: 'User Workspace Portal';
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: -2px;
+}
+
+.nav-links-stack {
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.nav-tab-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-tab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #f1f5f9;
+}
+
+.nav-tab-btn.active {
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.btn-icon {
+  font-size: 16px;
+}
+
+.viewport-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.top-navbar-bar {
+  height: 70px;
+  min-height: 70px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  box-sizing: border-box;
+}
+
+.spacer-flex {
+  flex: 1;
+}
+
+.log-out-action-button {
+  background: none;
+  border: 1px solid #cbd5e1;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.log-out-action-button:hover {
+  background-color: #f1f5f9;
+}
+
+.main-body-workspace {
+  padding: 32px;
+  flex: 1;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.identity-badge-row {
+  margin-bottom: 24px;
+}
+
+.identity-badge-row .badge-text-name {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+}
+
+.identity-badge-row::after {
+  content: 'Standard Portal Access Tier';
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.dashboard-activity-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-activity-panel .panel-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 20px;
+}
+
+.timeline-scroll-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-timeline-row {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 14px 20px;
+  border-radius: 8px;
+}
+
+.activity-content-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.activity-message-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.activity-timestamp-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.empty-timeline-fallback {
+  text-align: center;
+  padding: 40px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}

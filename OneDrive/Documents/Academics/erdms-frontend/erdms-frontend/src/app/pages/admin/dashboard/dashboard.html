@@ -1,0 +1,189 @@
+<div class="wireframe-layout">
+  
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">🛡️</div>
+      <div class="brand-text">
+        <h3>ERDMS</h3>
+        <small>Group 4 Platform</small>
+      </div>
+    </div>
+    
+    <nav class="sidebar-menu">
+      <a (click)="navToDashboard()" class="menu-item active" style="cursor: pointer;">
+        <span class="icon">🏠</span> Dashboard
+      </a>
+      <a (click)="navToDocManagement()" class="menu-item" style="cursor: pointer;">
+        <span class="icon">📄</span> Document Management
+      </a>
+      <a (click)="navToUserManagement()" class="menu-item" style="cursor: pointer;">
+        <span class="icon">👤</span> User Management
+      </a>
+      <a (click)="navToAuditLogs()" class="menu-item" style="cursor: pointer;">
+        <span class="icon">🛡️</span> Logs & Audit Trail
+      </a>
+    </nav>
+    
+    <div class="sidebar-footer">
+      <a (click)="executeSignOut()" class="menu-item logout" style="cursor: pointer;">
+        <span class="icon">🚪</span> Sign Out
+      </a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="main-header">
+      <div class="header-title">
+        <h1>Administrative Matrix Analytics</h1>
+        <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b;">Central Operations Hub Overview</p>
+      </div>
+      
+      <div class="header-profile">
+        <div class="profile-avatar">👤</div>
+        <div class="profile-info">
+          <span class="profile-name">Lorenz Gallardo</span>
+          <span class="profile-role">(Admin) 🔀</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-body" style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
+      
+      <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        
+        <div class="wireframe-panel" style="padding: 22px; border-left: 5px solid #2563eb; display: flex; align-items: center; gap: 18px;">
+          <div style="font-size: 34px; background: #eff6ff; padding: 12px; border-radius: 8px;">👤</div>
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px; letter-spacing: 0.5px;">Registered Users</label>
+            <div style="font-size: 30px; font-weight: 800; color: #1e293b; line-height: 1.1;">{{ totalRegisteredUsers }}</div>
+            <span style="font-size: 11.5px; color: #16a34a; font-weight: 600; display: inline-block; margin-top: 4px;">● {{ activeUsersCount }} Active Credentials</span>
+          </div>
+        </div>
+
+        <div class="wireframe-panel" style="padding: 22px; border-left: 5px solid #0f766e; display: flex; align-items: center; gap: 18px;">
+          <div style="font-size: 34px; background: #f0fdfa; padding: 12px; border-radius: 8px;">📄</div>
+          <div>
+            <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px; letter-spacing: 0.5px;">Uploaded Documents</label>
+            <div style="font-size: 30px; font-weight: 800; color: #1e293b; line-height: 1.1;">{{ totalUploadedDocuments }}</div>
+            <span style="font-size: 11.5px; color: #64748b; font-style: italic; display: inline-block; margin-top: 4px;">Indexed across secure trees</span>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="wireframe-panel" style="padding: 20px;">
+        <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 20px;">
+          <h2 style="margin: 0; font-size: 15px; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 18px;">📈</span> Live Platform Usage Statistics
+          </h2>
+          <p style="margin: 3px 0 0 0; font-size: 11.5px; color: #64748b;">Calculated interaction velocity and user storage trends</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+          
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; text-align: center;">
+            <span style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; display: block; margin-bottom: 6px;">User Engagement Ratio</span>
+            <div style="font-size: 26px; font-weight: 800; color: #2563eb;">{{ activeEngagementRatio }}%</div>
+            <div style="width: 100%; background: #e2e8f0; height: 6px; border-radius: 3px; margin-top: 10px; overflow: hidden;">
+              <div [style.width.%]="activeEngagementRatio" style="background: #2563eb; height: 100%; border-radius: 3px;"></div>
+            </div>
+          </div>
+
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; text-align: center;">
+            <span style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; display: block; margin-bottom: 6px;">Asset Density per Folder</span>
+            <div style="font-size: 26px; font-weight: 800; color: #0f766e;">{{ averageAssetsPerDirectory }}</div>
+            <p style="margin: 8px 0 0 0; font-size: 11px; color: #64748b;">Average document nodes nested</p>
+          </div>
+
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; text-align: center;">
+            <span style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; display: block; margin-bottom: 6px;">System Action Velocity</span>
+            <div style="font-size: 16px; font-weight: 700; color: #4f46e5; margin-top: 8px; background: #e0e7ff; padding: 6px 12px; border-radius: 20px; display: inline-block;">
+              ⚡ {{ systemActionVelocity }}
+            </div>
+            <p style="margin: 10px 0 0 0; font-size: 11px; color: #64748b;">Based on mutation logs load</p>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="wireframe-panel" style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+        
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px;">
+          <div>
+            <h2 style="margin: 0; font-size: 15px; color: #0f172a;">Global Central System Activity</h2>
+            <p style="margin: 2px 0 0 0; font-size: 11.5px; color: #64748b;">Complete historical trace operations captured across all app contexts</p>
+          </div>
+          
+          @if (allGlobalLogs.length > 0) {
+            <button 
+              (click)="purgeEntireGlobalAuditHistory()"
+              style="background: #fef2f2; border: 1px solid #fee2e2; color: #dc2626; padding: 6px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.15s;">
+              🚨 Purge Global History
+            </button>
+          }
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 250px; position: relative;">
+            <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;">🔍</span>
+            <input 
+              type="text" 
+              [(ngModel)]="logSearchQuery" 
+              placeholder="Filter master logs by phrase details or UID..." 
+              style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box;">
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; white-space: nowrap;">Event Segment:</label>
+            <select 
+              [(ngModel)]="selectedLogTypeFilter"
+              style="padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12.5px; background: #fff; color: #1e293b; outline: none; cursor: pointer; font-weight: 500;">
+              <option value="All Logs">Master Action Log Timeline</option>
+              <option value="Modifications">Modifications & Renames</option>
+              <option value="Uploads">Document Upload Actions</option>
+              <option value="Deletions">Structural Purge Logs</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="panel-body" style="max-height: 350px; overflow-y: auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px;">
+          @if (filteredGlobalLogs.length === 0) {
+            <div style="text-align: center; padding: 40px 20px; color: #94a3b8; font-style: italic; font-size: 13.5px;">
+              No central logs match your query configurations.
+            </div>
+          } @else {
+            <div style="display: flex; flex-direction: column;">
+              @for (log of filteredGlobalLogs; track log.timestamp; let last = $last) {
+                <div 
+                  style="display: flex; gap: 16px; padding: 14px 16px; transition: background 0.15s; align-items: flex-start;"
+                  [style.border-bottom]="!last ? '1px solid #f1f5f9' : 'none'"
+                  onmouseover="this.style.backgroundColor='#f8fafc'" 
+                  onmouseout="this.style.backgroundColor='transparent'">
+                  
+                  <div style="white-space: nowrap; font-family: monospace; font-size: 12px; color: #0284c7; font-weight: 600; padding-top: 2px; min-width: 150px;">
+                    📅 {{ log.timestamp }}
+                  </div>
+
+                  <div style="white-space: nowrap; font-family: monospace; font-size: 11px; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-weight: bold;">
+                    UID: #{{ log.user_uid }}
+                  </div>
+
+                  <div style="font-size: 13px; color: #334155; line-height: 1.4; flex: 1; word-break: break-word;">
+                    {{ extractLogText(log) }}
+                  </div>
+
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div style="font-size: 12px; color: #64748b; text-align: right; padding-right: 5px;">
+          Showing {{ filteredGlobalLogs.length }} tracking traces out of {{ allGlobalLogs.length }} global system parameters.
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+</div>
