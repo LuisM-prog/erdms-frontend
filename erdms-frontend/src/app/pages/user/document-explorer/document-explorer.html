@@ -1,0 +1,131 @@
+<div class="wireframe-container">
+  
+  <aside class="left-sidebar">
+    <div class="user-avatar-area"></div>
+    
+    <nav class="nav-links-stack">
+      <button (click)="navigateToTab('/user/dashboard')" class="nav-tab-btn">
+        <span class="btn-icon">📊</span> Dashboard
+      </button>
+      <button (click)="navigateToTab('/user/document-management')" class="nav-tab-btn active">
+        <span class="btn-icon">📁</span> Document Management
+      </button>
+      <button (click)="navigateToTab('/user/user-profile')" class="nav-tab-btn">
+        <span class="btn-icon">👤</span> Profile
+      </button>
+    </nav>
+  </aside>
+
+  <main class="viewport-main">
+    <header class="top-navbar-bar">
+      <div class="spacer-flex"></div>
+      
+      <div class="profile-trigger-btn" (click)="toggleDropdown()">
+        <span class="u-name">{{ userInfo.name }}</span>
+        <span class="u-role">({{ userInfo.position }})</span>
+      </div>
+
+      <div *ngIf="isDropdownOpen" class="dropdown-bubble-card">
+        <strong style="display: block; font-size: 14px; color: #0f172a;">{{ userInfo.name }}</strong>
+        <small style="display: block; color: #64748b; margin-bottom: 8px;">{{ userInfo.email }}</small>
+        <div style="border-top: 1px solid #e2e8f0; margin: 6px 0;"></div>
+        <button (click)="isDropdownOpen=false; navigateToTab('/user/user-profile')" class="dropdown-item-action-btn">👤 View Profile Workspace</button>
+        <button (click)="executeSignOut()" class="dropdown-item-action-btn sign-out-text">🚪 Log Out</button>
+      </div>
+    </header>
+
+    <div class="main-body-workspace">
+      <div class="identity-badge-row">
+        <div class="badge-text-name">Welcome Back, {{ userInfo.name }}</div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" style="text-align: center; padding: 40px; color: #64748b;">
+        Loading your documents...
+      </div>
+
+      <!-- Error Message -->
+      <div *ngIf="errorMessage" style="background: #fee2e2; color: #dc2626; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 20px;">
+        {{ errorMessage }}
+      </div>
+
+      <div class="document-management-panel" *ngIf="!isLoading">
+        <div class="panel-heading">My Accessible Documents</div>
+        
+        <div class="filter-controls-header">
+          <div class="search-input-wrapper">
+            <span class="search-glass-icon">🔍</span>
+            <input type="text" 
+                   name="searchQuery"
+                   [(ngModel)]="searchQuery" 
+                   placeholder="Filter documents by keyword..." 
+                   class="wireframe-search-field" />
+          </div>
+
+          <div class="category-filter-wrapper">
+            <select name="selectedCategory" [(ngModel)]="selectedCategory" class="wireframe-dropdown-select">
+              <option value="All">All Categories</option>
+              <option value="General">General</option>
+              <option value="Invoice">Invoice / Legal</option>
+              <option value="Analytics">Analytics</option>
+              <option value="Report">Report</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="permitted-header-bar">
+          <span class="permitted-title-text">Available Documents</span>
+          <span class="badge-count">{{ filteredDocuments.length }} Document(s) Found</span>
+        </div>
+
+        <!-- Documents Section -->
+        <div class="table-scroll-container">
+          <table class="wireframe-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45%;">Document Name</th>
+                <th style="width: 15%;">Category</th>
+                <th style="width: 15%;">Type</th>
+                <th style="width: 25%; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let doc of filteredDocuments">
+                <td>
+                  <div class="file-name-cell">
+                    <span class="file-lead-icon">📄</span>
+                    <div class="file-meta-strings">
+                      <span>{{ doc.title }}</span>
+                      <small class="file-label-bytes">{{ doc.description || 'No description' }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="type-capsule-badge">{{ doc.category || 'General' }}</span>
+                </td>
+                <td>
+                  <span class="type-capsule-badge">{{ doc.file_type || 'Document' }}</span>
+                </td>
+                <td style="text-align: center;">
+                  <button (click)="simulateDownload(doc)" class="action-download-pill-btn">
+                    📥 Download
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="filteredDocuments.length === 0">
+                <td colspan="4" class="empty-fallback-td-row">
+                  <div class="empty-notice-box">
+                    <span class="empty-icon-shield">📂</span>
+                    <p class="empty-state-alert-text">No documents found matching your criteria.</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+</div>

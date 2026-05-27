@@ -1,0 +1,416 @@
+/* ==========================================================================
+   🧱 MASTER WIREFRAME FLEXBOX GRID SYSTEM
+   ========================================================================== */
+
+.wireframe-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #f1f5f9;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   🎛️ SIDEBAR NAVIGATION MODULE
+   ========================================================================== */
+
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background-color: #0f172a;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-brand {
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.brand-text h3 {
+  margin: 0;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #38bdf8;
+}
+
+.sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 12px;
+  flex: 1;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: #94a3b8;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.menu-item:hover {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
+.menu-item.active {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.sidebar-footer {
+  padding: 16px 12px;
+  border-top: 1px solid #1e293b;
+}
+
+.menu-item.logout:hover {
+  background-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+/* ==========================================================================
+   💻 CONTENT CONTAINER STRUCTURES
+   ========================================================================== */
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.main-header {
+  height: 70px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 32px;
+}
+
+.header-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-avatar {
+  width: 36px;
+  height: 36px;
+  background-color: #e2e8f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.profile-role {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.content-body {
+  padding: 32px;
+  max-width: 1400px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   📂 WORKSPACE CONTROL MODULES
+   ========================================================================== */
+
+.wireframe-panel {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #ffffff;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.folder-row-item {
+  transition: all 0.2s ease;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 4px;
+}
+
+.folder-row-item:hover {
+  background-color: #f8fafc;
+}
+
+.folder-row-item.active-folder {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1e40af !important;
+}
+
+/* ==========================================================================
+   🗃️ REPOSITORY SCHEMAS ACTIVITY TABLE
+   ========================================================================== */
+
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.activity-table th {
+  background-color: #f8fafc;
+  padding: 14px 24px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.activity-table td {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.light-text {
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.subsystem-tag {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-indicator {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-indicator.active {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}
+
+.time-badge {
+  background-color: #f1f5f9;
+  color: #475569;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+/* ==========================================================================
+   🔧 SYSTEM CALL ACTIONS & BUTTON STRUCTS
+   ========================================================================== */
+
+.btn-gray-create {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-gray-create:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.btn-gray-create:disabled {
+  background-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.btn-action {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.delete-btn {
+  background-color: #fff1f2;
+  color: #df1c1c;
+  border-color: #ffe4e6;
+}
+
+.delete-btn:hover {
+  background-color: #ffe4e6;
+}
+
+/* ==========================================================================
+   🔏 MODAL OVERLAYS & STRUCTURAL DIALOGS
+   ========================================================================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-window {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  width: 100%;
+}
+
+.modal-top-bar {
+  padding: 12px 16px;
+  background-color: #f8fafc;
+  display: flex;
+  justify-content: flex-end;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-close-trigger {
+  font-size: 20px;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.modal-field-input, .modal-field-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.modal-submit-btn {
+  width: 100%;
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.folder-list-item {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.folder-list-item:hover {
+  background-color: #f1f5f9;
+}
+.active-folder-node {
+  background-color: #eff6ff !important;
+  border-color: #3b82f6 !important;
+  color: #1d4ed8 !important;
+}
+.delete-trigger-btn:hover {
+  background-color: #fee2e2;
+  border-radius: 4px;
+}
+
+/* Make sure sidebar and header are identical across all tabs */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background-color: #0b1329;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #1e293b;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8fafc;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-header {
+  height: 70px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  flex-shrink: 0;
+}
+
+.content-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+}

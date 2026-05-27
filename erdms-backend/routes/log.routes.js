@@ -5,22 +5,26 @@ import {
     getLogsByDocument,
     getLogsByAction,
     getLogStats,
-    getRecentLogs
+    getRecentLogs,
+    createLog          
 } from '../controllers/log.controller.js';
 import authMiddleware from '../middleware/auth.js';
 import { isAdmin } from '../middleware/role.js';
 
 const router = express.Router();
 
-// All log routes require authentication and admin role
+// All log routes require authentication and admin role for GET
 router.use(authMiddleware);
-router.use(isAdmin);
 
-router.get('/', getAllLogs);
-router.get('/stats', getLogStats);
-router.get('/recent', getRecentLogs);
-router.get('/user/:userId', getLogsByUser);
-router.get('/document/:documentId', getLogsByDocument);
-router.get('/action/:action', getLogsByAction);
+// POST route - create log (admin only for security)
+router.post('/', isAdmin, createLog);
+
+// GET routes - admin only
+router.get('/', isAdmin, getAllLogs);
+router.get('/stats', isAdmin, getLogStats);
+router.get('/recent', isAdmin, getRecentLogs);
+router.get('/user/:userId', isAdmin, getLogsByUser);
+router.get('/document/:documentId', isAdmin, getLogsByDocument);
+router.get('/action/:action', isAdmin, getLogsByAction);
 
 export default router;

@@ -346,3 +346,40 @@ export const getRecentLogs = (req, res) => {
         res.json(results);
     });
 };
+
+// CREATE new log entry (POST /api/logs)
+ export const createLog = (req, res) => {
+    const { user_id, action, document_id } = req.body;
+    
+    // Validate required fields
+    if (!user_id || !action) {
+        return res.status(400).json({ message: 'user_id and action are required' });
+    }
+    
+    // Validate action type
+    const validActions = [
+        'login', 'logout', 'upload', 'download', 'delete', 'edit',
+        'create_user', 'edit_user', 'delete_user', 'toggle_user_status',
+        'create_folder', 'edit_folder', 'delete_folder'
+    ];
+    
+    if (!validActions.includes(action)) {
+        return res.status(400).json({ message: 'Invalid action type' });
+    }
+    
+    // Insert log into database
+    const query = 'INSERT INTO Logs (user_id, action, document_id) VALUES (?, ?, ?)';
+    const values = [user_id, action, document_id || null];
+    
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error('[Log Error]', err.message);
+            return res.status(500).json({ message: 'Database error', error: err.message });
+        }
+        
+        res.status(201).json({
+            message: 'Log entry created successfully',
+            log_id: result.insertId
+        });
+    });
+};
