@@ -108,18 +108,32 @@ export class FolderManagementComponent implements OnInit {
     this.isLoading = false;
   }
 
-  async updateFolder() {
+    async updateFolder() {
     if (!this.selectedFolderId) return;
     if (!this.selectedFolderName.trim()) {
       alert('Folder name cannot be empty');
       return;
     }
     
+    // Get the original folder data first
+    const originalFolder = this.folders.find(f => f.folder_id === this.selectedFolderId);
+    if (!originalFolder) return;
+    
+    // Check if anything actually changed
+    const nameChanged = this.selectedFolderName.trim() !== originalFolder.folder_name;
+    const permissionChanged = this.selectedFolderPermission !== originalFolder.permissions;
+    
+    if (!nameChanged && !permissionChanged) {
+      alert('No changes were made to the folder');
+      return;
+    }
+    
     this.isLoading = true;
-    const success = await this.state.updateFolder(this.selectedFolderId, {
-      folder_name: this.selectedFolderName.trim(),
-      permissions: this.selectedFolderPermission as any
-    });
+    const updateData: any = {};
+    if (nameChanged) updateData.folder_name = this.selectedFolderName.trim();
+    if (permissionChanged) updateData.permissions = this.selectedFolderPermission;
+    
+    const success = await this.state.updateFolder(this.selectedFolderId, updateData);
     
     if (success) {
       alert('Folder updated successfully!');

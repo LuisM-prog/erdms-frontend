@@ -60,7 +60,6 @@ const hasDocumentAccess = (user, document, callback) => {
 };
 
 // DOWNLOAD document (with permission check)
-// DOWNLOAD document (with permission check)
 export const downloadDocument = (req, res) => {
     const { id } = req.params;
     const userId = req.user.user_id;
@@ -97,10 +96,11 @@ export const downloadDocument = (req, res) => {
                     return res.status(403).json({ message: 'You do not have permission to download this document' });
                 }
                 
-                // Log the download action
+                // Log the download action 
                 db.query(
-                    'INSERT INTO Logs (user_id, action, document_id) VALUES (?, "download", ?)',
-                    [userId, id]
+                    'INSERT INTO Logs (user_id, action, document_id, details) VALUES (?, "download", ?, ?)',
+                    [userId, id, `Downloaded "${document.title}"`],
+                    (logErr) => { if (logErr) console.error('Log error:', logErr.message); }
                 );
                 
                 // Set download headers
@@ -287,10 +287,12 @@ export const uploadDocument = (req, res) => {
                             return res.status(500).json({ message: 'Failed to upload document', error: err.message });
                         }
                         
-                        // Log the upload action
+                        // Log the upload action with folder info
+                        const folderName = folderResults[0].folder_name;
                         db.query(
-                            'INSERT INTO Logs (user_id, action, document_id) VALUES (?, "upload", ?)',
-                            [uploaded_by, result.insertId]
+                            'INSERT INTO Logs (user_id, action, document_id, details) VALUES (?, "upload", ?, ?)',
+                            [uploaded_by, result.insertId, `Uploaded "${title}" to folder "${folderResults[0].folder_name}"`],
+                            (logErr) => { if (logErr) console.error('Log error:', logErr.message); }
                         );
                         
                         res.status(201).json({
@@ -310,7 +312,7 @@ export const uploadDocument = (req, res) => {
     });
 };
 
-// UPDATE document metadata (title, description, category, accessibility)
+// UPDATE document metadata
 export const updateDocument = (req, res) => {
     const { id } = req.params;
     const { title, description, category, accessibility } = req.body;
@@ -319,13 +321,20 @@ export const updateDocument = (req, res) => {
         return res.status(400).json({ message: 'Nothing to update' });
     }
     
-    // Check if document exists
-    db.query('SELECT * FROM Documents WHERE document_id = ?', [id], (err, results) => {
+    // Get old document title first
+    db.query('SELECT title FROM Documents WHERE document_id = ?', [id], (err, oldData) => {
         if (err) {
             return res.status(500).json({ message: 'Database error', error: err.message });
         }
-        if (results.length === 0) {
+        if (oldData.length === 0) {
             return res.status(404).json({ message: 'Document not found' });
+        }
+        
+        const oldTitle = oldData[0].title;
+        let changes = [];
+        
+        if (title && title !== oldTitle) {
+            changes.push(`renamed from "${oldTitle}" to "${title}"`);
         }
         
         let updates = [];
@@ -361,10 +370,11 @@ export const updateDocument = (req, res) => {
                     return res.status(500).json({ message: 'Database error', error: err.message });
                 }
                 
-                // Log the edit action
+                const changeText = changes.length > 0 ? changes.join(', ') : 'updated document metadata';
                 db.query(
-                    'INSERT INTO Logs (user_id, action, document_id) VALUES (?, "edit", ?)',
-                    [req.user.user_id, id]
+                    'INSERT INTO Logs (user_id, action, document_id, details) VALUES (?, "edit", ?, ?)',
+                    [req.user.user_id, id, changeText],
+                    (logErr) => { if (logErr) console.error('Failed to log edit:', logErr.message); }
                 );
                 
                 res.json({ message: 'Document updated successfully' });
@@ -376,9 +386,10 @@ export const updateDocument = (req, res) => {
 // DELETE document (Admin only)
 export const deleteDocument = (req, res) => {
     const { id } = req.params;
+    const userId = req.user.user_id;
     
-    // Get file path first
-    db.query('SELECT file_path FROM Documents WHERE document_id = ?', [id], (err, results) => {
+    // First, get document info BEFORE deleting
+    db.query('SELECT file_path, title, folder_id FROM Documents WHERE document_id = ?', [id], (err, results) => {
         if (err) {
             return res.status(500).json({ message: 'Database error', error: err.message });
         }
@@ -387,26 +398,35 @@ export const deleteDocument = (req, res) => {
         }
         
         const filePath = results[0].file_path;
+        const documentTitle = results[0].title;
         
-        // Delete from database
-        db.query('DELETE FROM Documents WHERE document_id = ?', [id], (err) => {
-            if (err) {
-                return res.status(500).json({ message: 'Failed to delete document', error: err.message });
+        // FIRST: Insert the log BEFORE deleting the document
+        db.query(
+            'INSERT INTO Logs (user_id, action, document_id, details) VALUES (?, "delete", ?, ?)',
+            [userId, id, `deleted document "${documentTitle}"`],
+            (logErr) => {
+                if (logErr) {
+                    console.error('Failed to log delete:', logErr.message);
+                }
+                
+                // NOW delete the document from database
+                db.query('DELETE FROM Documents WHERE document_id = ?', [id], (err) => {
+                    if (err) {
+                        return res.status(500).json({ message: 'Failed to delete document', error: err.message });
+                    }
+                    
+                    // Delete physical file if it exists
+                    if (filePath && fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                    
+                    res.json({ 
+                        message: 'Document deleted successfully',
+                        document_title: documentTitle
+                    });
+                });
             }
-            
-            // Delete physical file
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-            
-            // Log the delete action
-            db.query(
-                'INSERT INTO Logs (user_id, action, document_id) VALUES (?, "delete", ?)',
-                [req.user.user_id, id]
-            );
-            
-            res.json({ message: 'Document deleted successfully' });
-        });
+        );
     });
 };
 

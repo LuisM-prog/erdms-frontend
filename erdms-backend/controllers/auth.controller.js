@@ -24,7 +24,7 @@ export const register = (req, res) => {
         // Hash password
         const hashedPassword = bcrypt.hashSync(password, 10);
 
-        // Get employees role_id (role_id = 2 from your SQL insert)
+        // Get employees role_id 
         db.query('SELECT role_id FROM Roles WHERE role_name = "employees"', (err, roleResults) => {
             if (err) {
                 return res.status(500).json({ message: 'Database error', error: err.message });

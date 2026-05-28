@@ -42,6 +42,7 @@ export class LogsAuditComponent implements OnInit {
       this.allLogs = result.logs;
       this.totalPages = result.total_pages;
       this.totalLogs = result.total;
+      console.log('Logs loaded:', this.allLogs);
     } catch (error) {
       console.error('Failed to load logs:', error);
     } finally {
@@ -56,7 +57,7 @@ export class LogsAuditComponent implements OnInit {
     if (this.searchQuery) {
       const query = this.searchQuery.toLowerCase();
       logs = logs.filter(log => {
-        const actionText = this.getActionText(log).toLowerCase();
+        const actionText = this.getActionDisplayText(log.action).toLowerCase();
         const userName = (log.user_name || '').toLowerCase();
         return actionText.includes(query) || userName.includes(query);
       });
@@ -79,49 +80,89 @@ export class LogsAuditComponent implements OnInit {
     return logs;
   }
 
-  getActionText(log: any): string {
-    const actionMap: { [key: string]: string } = {
-      'login': 'User Login',
-      'logout': 'User Logout',
-      'upload': 'Document Upload',
-      'download': 'Document Download',
-      'delete': 'Document Deletion',
-      'edit': 'Document Edit',
-      'create_user': 'Create User Account',
-      'edit_user': 'Edit User Details',
-      'delete_user': 'Delete User Account',
-      'toggle_user_status': 'Toggle User Status',
-      'reset_user_password': 'Reset User Password',
-      'create_folder': 'Create New Folder',
-      'edit_folder': 'Edit Folder Settings',
-      'delete_folder': 'Delete Folder'
+  // Map backend action to display text
+  getActionDisplayText(action: string): string {
+    if (!action) return 'SYSTEM ACTION';
+    
+    const actionMap: Record<string, string> = {
+      'login': 'LOGIN',
+      'logout': 'LOGOUT',
+      'upload': 'UPLOAD',
+      'download': 'DOWNLOAD',
+      'delete': 'DELETE',
+      'edit': 'EDIT',
+      'create_user': 'CREATE USER',
+      'edit_user': 'EDIT USER',
+      'delete_user': 'DELETE USER',
+      'toggle_user_status': 'TOGGLE STATUS',
+      'create_folder': 'CREATE FOLDER',
+      'edit_folder': 'EDIT FOLDER',
+      'delete_folder': 'DELETE FOLDER'
     };
-    return actionMap[log.action] || log.action || 'System Action';
+    return actionMap[action] || action.toUpperCase();
   }
 
-  getCategoryBadgeClass(action: string): string {
+  // Get icon for action
+  getActionIcon(action: string): string {
+    if (!action) return '📋';
+    
+    const iconMap: Record<string, string> = {
+      'login': '🔐', 'logout': '🚪',
+      'upload': '📤', 'download': '📥',
+      'delete': '🗑️', 'edit': '✏️',
+      'create_user': '👤+', 'edit_user': '👤✏️', 'delete_user': '👤🗑️',
+      'toggle_user_status': '👤⚡',
+      'create_folder': '📁+', 'edit_folder': '📁✏️', 'delete_folder': '📁🗑️'
+    };
+    return iconMap[action] || '📋';
+  }
+
+  // Get badge class for action
+  getBadgeClass(action: string): string {
     const loginActions = ['login', 'logout'];
     const transferActions = ['upload', 'download'];
-    const userActions = ['create_user', 'edit_user', 'delete_user', 'toggle_user_status', 'reset_user_password'];
-    const folderActions = ['create_folder', 'edit_folder', 'delete_folder'];
+    const adminActions = ['create_user', 'edit_user', 'delete_user', 'create_folder', 'edit_folder', 'delete_folder'];
     
     if (loginActions.includes(action)) return 'badge-login';
     if (transferActions.includes(action)) return 'badge-transfer';
-    if (userActions.includes(action)) return 'badge-user';
-    if (folderActions.includes(action)) return 'badge-folder';
+    if (adminActions.includes(action)) return 'badge-admin';
     return 'badge-access';
   }
 
-getCategoryIcon(action: string): string {
-  const iconMap: { [key: string]: string } = {
-    'login': '🔐', 'logout': '🚪',
-    'upload': '📤', 'download': '📥',
-    'delete': '🗑️', 'edit': '✏️',
-    'create_user': '👤+', 'edit_user': '👤✏️', 'delete_user': '👤🗑️', 'toggle_user_status': '👤⚡', 'reset_user_password': '👤🔑',
-    'create_folder': '📁+', 'edit_folder': '📁✏️', 'delete_folder': '📁🗑️'
-  };
-  return iconMap[action] || '📋';
-}
+  // Get full action display (icon + text)
+  getActionDisplay(action: string): string {
+    return `${this.getActionIcon(action)} ${this.getActionDisplayText(action)}`;
+  }
+
+  getActionDescription(log: any): string {
+    const userName = log.user_name || 'Unknown User';
+    
+    // If there's a details column, use it
+    if (log.details && log.details.trim() !== '') {
+      return `${userName} ${log.details}`;
+    }
+    
+    // Fallback for logs without details
+    const action = log.action;
+    if (!action) return `${userName} performed an action`;
+    
+    switch (action) {
+      case 'login': return `${userName} logged into the system`;
+      case 'logout': return `${userName} logged out of the system`;
+      case 'upload': return `${userName} uploaded "${log.document_title || 'a document'}"`;
+      case 'download': return `${userName} downloaded "${log.document_title || 'a document'}"`;
+      case 'delete': return `${userName} deleted "${log.document_title || 'a document'}"`;
+      case 'edit': return `${userName} edited "${log.document_title || 'a document'}"`;
+      case 'create_user': return `${userName} created a new user account`;
+      case 'edit_user': return `${userName} ${log.details || 'edited a user account'}`;
+      case 'delete_user': return `${userName} deleted a user account`;
+      case 'toggle_user_status': return `${userName} ${log.details || 'toggled user status'}`;
+      case 'create_folder': return `${userName} created a new folder`;
+      case 'edit_folder': return `${userName} ${log.details || 'edited a folder'}`;
+      case 'delete_folder': return `${userName} deleted a folder`;
+      default: return `${userName} performed ${action.replace(/_/g, ' ')}`;
+    }
+  }
 
   async nextPage() {
     if (this.currentPage < this.totalPages) {
@@ -134,12 +175,6 @@ getCategoryIcon(action: string): string {
     if (this.currentPage > 1) {
       this.currentPage--;
       await this.loadLogs();
-    }
-  }
-
-  async clearAuditLogTrail() {
-    if (confirm('Are you completely certain you want to purge all security traces from this view?')) {
-      alert('This feature requires a backend endpoint for bulk log deletion. Please implement DELETE /api/logs/all');
     }
   }
 
