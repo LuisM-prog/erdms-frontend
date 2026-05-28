@@ -37,9 +37,6 @@ export class StateService {
   async createUser(user: { name: string; email: string; role_id: 1 | 2 }): Promise<{ user_id: number; temporary_password: string } | null> {
     try {
       const result = await firstValueFrom(this.http.post<{ user_id: number; temporary_password: string }>('/users', user));
-      if (result) {
-        await this.recordAction('create_user');
-      }
       return result;
     } catch (error) {
       console.error('Failed to create user:', error);
@@ -50,7 +47,6 @@ export class StateService {
   async updateUser(userId: number, data: { name?: string; email?: string; role_id?: number; status?: 'active' | 'inactive' }): Promise<boolean> {
     try {
       await firstValueFrom(this.http.put<void>(`/users/${userId}`, data));
-      await this.recordAction('edit_user');
       return true;
     } catch (error) {
       console.error(`Failed to update user ${userId}:`, error);
@@ -61,7 +57,6 @@ export class StateService {
   async deleteUser(userId: number): Promise<boolean> {
     try {
       await firstValueFrom(this.http.delete<void>(`/users/${userId}`));
-      await this.recordAction('delete_user');
       return true;
     } catch (error) {
       console.error(`Failed to delete user ${userId}:`, error);
@@ -72,7 +67,6 @@ export class StateService {
   async toggleUserStatus(userId: number, status: 'active' | 'inactive'): Promise<boolean> {
     try {
       await firstValueFrom(this.http.patch<void>(`/users/${userId}/status`, { status }));
-      await this.recordAction('toggle_user_status');
       return true;
     } catch (error) {
       console.error(`Failed to toggle status for user ${userId}:`, error);
@@ -83,9 +77,7 @@ export class StateService {
   async resetUserPassword(userId: number): Promise<{ temporary_password: string } | null> {
     try {
       const result = await firstValueFrom(this.http.post<{ temporary_password: string }>(`/users/${userId}/reset-password`, {}));
-      if (result) {
-        await this.recordAction('reset_user_password');
-      }
+
       return result;
     } catch (error) {
       console.error(`Failed to reset password for user ${userId}:`, error);
@@ -147,9 +139,7 @@ export class StateService {
   async createFolder(folder_name: string, permissions: 'public' | 'private' | 'restricted' = 'public'): Promise<{ folder_id: number } | null> {
     try {
       const result = await firstValueFrom(this.http.post<{ folder_id: number }>('/folders', { folder_name, permissions }));
-      if (result) {
-        await this.recordAction('create_folder');
-      }
+
       return result;
     } catch (error) {
       console.error('Failed to create folder:', error);
@@ -160,7 +150,6 @@ export class StateService {
   async updateFolder(folderId: number, data: { folder_name?: string; permissions?: 'public' | 'private' | 'restricted' }): Promise<boolean> {
     try {
       await firstValueFrom(this.http.put<void>(`/folders/${folderId}`, data));
-      await this.recordAction('edit_folder');
       return true;
     } catch (error) {
       console.error(`Failed to update folder ${folderId}:`, error);
@@ -221,9 +210,7 @@ export class StateService {
   async uploadDocument(formData: FormData): Promise<{ document_id: number; message: string } | null> {
     try {
       const result = await firstValueFrom(this.http.upload<{ document_id: number; message: string }>('/documents/upload', formData));
-      if (result) {
-        await this.recordAction('upload', result.document_id);
-      }
+
       return result;
     } catch (error) {
       console.error('Failed to upload document:', error);
@@ -244,7 +231,6 @@ export class StateService {
   async deleteDocument(documentId: number): Promise<boolean> {
     try {
       await firstValueFrom(this.http.delete<void>(`/documents/${documentId}`));
-      await this.recordAction('delete', documentId);
       return true;
     } catch (error) {
       console.error(`Failed to delete document ${documentId}:`, error);
@@ -266,7 +252,6 @@ export class StateService {
     try {
       const blob = await firstValueFrom(this.http.download(`/documents/${documentId}/download`));
       if (blob) {
-        await this.recordAction('download', documentId);
       }
       return blob;
     } catch (error) {
@@ -279,28 +264,28 @@ export class StateService {
   // LOG API METHODS
   // ==========================================================================
 
-  // Add this method to StateService class
-  private async recordAction(action: string, documentId?: number): Promise<void> {
-    const userId = this.getCurrentUserId();
-    if (!userId) {
-      console.warn('[LOG] Cannot record action: No user logged in');
-      return;
-    }
+  // // Add this method to StateService class
+  // private async recordAction(action: string, documentId?: number): Promise<void> {
+  //   const userId = this.getCurrentUserId();
+  //   if (!userId) {
+  //     console.warn('[LOG] Cannot record action: No user logged in');
+  //     return;
+  //   }
     
-    try {
-      // Call backend to create log entry
-      const result = await firstValueFrom(
-        this.http.post('/logs', { 
-          user_id: userId, 
-          action: action, 
-          document_id: documentId || null 
-        })
-      );
-      console.log(`[LOG] ✓ Action recorded: ${action} by user ${userId}`);
-    } catch (error: any) {
-      console.error('[LOG] Failed to record action:', error?.message || error);
-    }
-  }
+  //   try {
+  //     // Call backend to create log entry
+  //     const result = await firstValueFrom(
+  //       this.http.post('/logs', { 
+  //         user_id: userId, 
+  //         action: action, 
+  //         document_id: documentId || null 
+  //       })
+  //     );
+  //     console.log(`[LOG] ✓ Action recorded: ${action} by user ${userId}`);
+  //   } catch (error: any) {
+  //     console.error('[LOG] Failed to record action:', error?.message || error);
+  //   }
+  // }
 
   async getAllLogs(params?: { page?: number; limit?: number; action?: string; startDate?: string; endDate?: string }): Promise<{ logs: Log[]; total: number; page: number; total_pages: number }> {
     try {

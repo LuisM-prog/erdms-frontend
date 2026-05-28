@@ -6,9 +6,9 @@ export const getAllLogs = (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
     
     let query = `
-        SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp,
-               u.name as user_name, u.email as user_email,
-               d.title as document_title
+        SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp, l.details,
+            u.name as user_name, u.email as user_email,
+            d.title as document_title
         FROM Logs l
         LEFT JOIN Users u ON l.user_id = u.user_id
         LEFT JOIN Documents d ON l.document_id = d.document_id
@@ -90,8 +90,8 @@ export const getLogsByUser = (req, res) => {
         }
         
         const query = `
-            SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp,
-                   d.title as document_title
+            SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp, l.details,
+                d.title as document_title
             FROM Logs l
             LEFT JOIN Documents d ON l.document_id = d.document_id
             WHERE l.user_id = ?
@@ -146,8 +146,8 @@ export const getLogsByDocument = (req, res) => {
         }
         
         const query = `
-            SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp,
-                   u.name as user_name, u.email as user_email
+            SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp, l.details,
+                u.name as user_name, u.email as user_email
             FROM Logs l
             LEFT JOIN Users u ON l.user_id = u.user_id
             WHERE l.document_id = ?
@@ -198,9 +198,9 @@ export const getLogsByAction = (req, res) => {
     }
     
     const query = `
-        SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp,
-               u.name as user_name, u.email as user_email,
-               d.title as document_title
+        SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp, l.details,
+            u.name as user_name, u.email as user_email,
+            d.title as document_title
         FROM Logs l
         LEFT JOIN Users u ON l.user_id = u.user_id
         LEFT JOIN Documents d ON l.document_id = d.document_id
@@ -329,7 +329,7 @@ export const getLogStats = (req, res) => {
 // GET recent logs (last 10)
 export const getRecentLogs = (req, res) => {
     const query = `
-        SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp,
+        SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp, l.details,
                u.name as user_name, u.email as user_email,
                d.title as document_title
         FROM Logs l

@@ -1,6 +1,6 @@
 import db from '../db.js';
 
-// GET all folders (with creator name)
+// GET all folders
 export const getAllFolders = (req, res) => {
     const query = `
         SELECT f.*, u.name as created_by_name 
@@ -48,7 +48,6 @@ export const createFolder = (req, res) => {
         return res.status(400).json({ message: 'Folder name is required' });
     }
     
-    // Check if folder name already exists
     db.query('SELECT * FROM Folders WHERE folder_name = ?', [folder_name], (err, results) => {
         if (err) {
             return res.status(500).json({ message: 'Database error', error: err.message });
@@ -67,6 +66,13 @@ export const createFolder = (req, res) => {
                     return res.status(500).json({ message: 'Failed to create folder', error: err.message });
                 }
                 
+                // Log with ENUM value + details
+                db.query(
+                    'INSERT INTO Logs (user_id, action, details) VALUES (?, "create_folder", ?)',
+                    [created_by, `Created folder: "${folder_name}"`],
+                    (logErr) => { if (logErr) console.error('Log error:', logErr.message); }
+                );
+                
                 res.status(201).json({
                     message: 'Folder created successfully',
                     folder_id: result.insertId,
@@ -79,39 +85,49 @@ export const createFolder = (req, res) => {
     });
 };
 
-// UPDATE folder (rename or change permissions)
+// UPDATE folder
 export const updateFolder = (req, res) => {
     const { id } = req.params;
     const { folder_name, permissions } = req.body;
+    const userId = req.user.user_id;
     
     if (!folder_name && !permissions) {
         return res.status(400).json({ message: 'Nothing to update' });
     }
     
-    // Check if folder exists
-    db.query('SELECT * FROM Folders WHERE folder_id = ?', [id], (err, results) => {
+    // Get old folder data
+    db.query('SELECT folder_name, permissions FROM Folders WHERE folder_id = ?', [id], (err, oldData) => {
         if (err) {
             return res.status(500).json({ message: 'Database error', error: err.message });
         }
-        if (results.length === 0) {
+        if (oldData.length === 0) {
             return res.status(404).json({ message: 'Folder not found' });
+        }
+        
+        const oldFolder = oldData[0];
+        let changes = [];
+        let hasActualChange = false;
+        
+        if (folder_name && folder_name !== oldFolder.folder_name) {
+            changes.push(`renamed from "${oldFolder.folder_name}" to "${folder_name}"`);
+            hasActualChange = true;
+        }
+        if (permissions && permissions !== oldFolder.permissions) {
+            changes.push(`changed permissions from ${oldFolder.permissions} to ${permissions}`);
+            hasActualChange = true;
+        }
+        
+        if (!hasActualChange) {
+            return res.status(400).json({ message: 'No changes detected' });
         }
         
         let updates = [];
         let values = [];
         
         if (folder_name) {
-            // Check if new name already taken by another folder
-            db.query('SELECT * FROM Folders WHERE folder_name = ? AND folder_id != ?', [folder_name, id], (err, nameResults) => {
-                if (err) return;
-                if (nameResults.length > 0) {
-                    return res.status(400).json({ message: 'Folder name already exists' });
-                }
-            });
             updates.push('folder_name = ?');
             values.push(folder_name);
         }
-        
         if (permissions) {
             if (!['public', 'private', 'restricted'].includes(permissions)) {
                 return res.status(400).json({ message: 'Permissions must be public, private, or restricted' });
@@ -129,26 +145,36 @@ export const updateFolder = (req, res) => {
                 if (err) {
                     return res.status(500).json({ message: 'Database error', error: err.message });
                 }
+                
+                // Log with readable message
+                const changeText = changes.join(' and ');
+                db.query(
+                    'INSERT INTO Logs (user_id, action, details) VALUES (?, "edit_folder", ?)',
+                    [userId, `${changeText}`],
+                    (logErr) => { if (logErr) console.error('Log error:', logErr.message); }
+                );
+                
                 res.json({ message: 'Folder updated successfully' });
             }
         );
     });
 };
 
-// DELETE folder (cascade deletes all documents inside)
+// DELETE folder
 export const deleteFolder = (req, res) => {
     const { id } = req.params;
+    const userId = req.user.user_id;
     
-    // Check if folder exists
-    db.query('SELECT * FROM Folders WHERE folder_id = ?', [id], (err, results) => {
+    db.query('SELECT folder_name FROM Folders WHERE folder_id = ?', [id], (err, folderResult) => {
         if (err) {
             return res.status(500).json({ message: 'Database error', error: err.message });
         }
-        if (results.length === 0) {
+        if (folderResult.length === 0) {
             return res.status(404).json({ message: 'Folder not found' });
         }
         
-        // Get count of documents in folder (for response message)
+        const folderName = folderResult[0].folder_name;
+        
         db.query('SELECT COUNT(*) as count FROM Documents WHERE folder_id = ?', [id], (err, countResults) => {
             const docCount = countResults[0].count;
             
@@ -156,6 +182,14 @@ export const deleteFolder = (req, res) => {
                 if (err) {
                     return res.status(500).json({ message: 'Failed to delete folder', error: err.message });
                 }
+                
+                // Log with ENUM value + details
+                db.query(
+                    'INSERT INTO Logs (user_id, action, details) VALUES (?, "delete_folder", ?)',
+                    [userId, `Deleted folder: "${folderName}" (contained ${docCount} documents)`],
+                    (logErr) => { if (logErr) console.error('Log error:', logErr.message); }
+                );
+                
                 res.json({ 
                     message: 'Folder deleted successfully',
                     documents_affected: docCount
@@ -165,7 +199,7 @@ export const deleteFolder = (req, res) => {
     });
 };
 
-// GET folders created by specific user
+// GET folders by user
 export const getFoldersByUser = (req, res) => {
     const { userId } = req.params;
     

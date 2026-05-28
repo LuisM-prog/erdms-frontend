@@ -62,10 +62,6 @@
             <option value="ACCESS">System Security Access Logs</option>
           </select>
         </div>
-
-        <button class="purge-history-btn" (click)="clearAuditLogTrail()">
-          🚨 Purge Global History
-        </button>
       </div>
 
       <div class="wireframe-panel">
@@ -92,32 +88,31 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let log of filteredAuditTrail">
-                <td class="timestamp-cell">
-                  📅 {{ log.timestamp | date:'MMM d, y, h:mm a' }}
-                </td>
-                <td class="uid-cell">
-                  UID: {{ log.user_id }}
-                </td>
-                <td>
-                  <span [class]="getCategoryBadgeClass(log.action)" style="padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">
-                    {{ getCategoryIcon(log.action) }} {{ getActionText(log.action) | uppercase }}
-                  </span>
-                </td>
-                <td class="details-cell">
-                  {{ getActionText(log.action) }} by {{ log.user_name || 'Unknown User' }}
-                  <span *ngIf="log.document_title"> on "{{ log.document_title }}"</span>
-                </td>
-                <td style="text-align: center;">
-                  <span class="status-pill success-pill">Success</span>
-                </td>
-              </tr>
-              <tr *ngIf="filteredAuditTrail.length === 0 && !isLoading">
-                <td colspan="5" class="empty-state-cell">
-                  No security mutations or operation traces recorded in this system window block.
-                </td>
-              </tr>
-            </tbody>
+            <tr *ngFor="let log of filteredAuditTrail">
+              <td class="timestamp-cell">
+                📅 {{ log.timestamp | date:'MMM d, y, h:mm a' }}
+              </td>
+              <td class="uid-cell">
+                UID: {{ log.user_id }}
+              </td>
+              <td>
+                <span [class]="getBadgeClass(log.action)" style="padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-block;">
+                  {{ getActionDisplay(log.action) }}
+                </span>
+              </td>
+              <td class="details-cell">
+                {{ getActionDescription(log) }}
+              </td>
+              <td style="text-align: center;">
+                <span class="status-pill success-pill">Success</span>
+              </td>
+            </tr>
+            <tr *ngIf="filteredAuditTrail.length === 0 && !isLoading">
+              <td colspan="5" class="empty-state-cell">
+                No security mutations or operation traces recorded in this system window block.
+              </td>
+            </tr>
+          </tbody>
           </table>
 
           <!-- Pagination Controls -->
