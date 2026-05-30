@@ -280,6 +280,7 @@ export const getMyProfile = (req, res) => {
 };
 
 // UPDATE own profile
+// UPDATE own profile (name, email only - no role/status)
 export const updateMyProfile = (req, res) => {
     const userId = req.user.user_id;
     const { name, email } = req.body;
@@ -288,39 +289,75 @@ export const updateMyProfile = (req, res) => {
         return res.status(400).json({ message: 'Nothing to update' });
     }
     
-    let updates = [];
-    let values = [];
-    
-    if (name) {
-        updates.push('name = ?');
-        values.push(name);
-    }
-    if (email) {
-        db.query('SELECT * FROM Users WHERE email = ? AND user_id != ?', [email, userId], (err, results) => {
-            if (err) return res.status(500).json({ message: 'Database error' });
-            if (results.length > 0) {
-                return res.status(400).json({ message: 'Email already in use' });
-            }
-        });
-        updates.push('email = ?');
-        values.push(email);
-    }
-    
-    values.push(userId);
-    
-    db.query(
-        `UPDATE Users SET ${updates.join(', ')} WHERE user_id = ?`,
-        values,
-        (err) => {
-            if (err) {
-                return res.status(500).json({ message: 'Database error', error: err.message });
-            }
-            res.json({ message: 'Profile updated successfully' });
+    // Get old values first
+    db.query('SELECT name, email FROM Users WHERE user_id = ?', [userId], (err, oldData) => {
+        if (err) {
+            return res.status(500).json({ message: 'Database error', error: err.message });
         }
-    );
+        
+        const oldName = oldData[0]?.name;
+        const oldEmail = oldData[0]?.email;
+        let changes = [];
+        let hasChange = false;
+        
+        if (name && name !== oldName) {
+            changes.push(`changed name from "${oldName}" to "${name}"`);
+            hasChange = true;
+        }
+        if (email && email !== oldEmail) {
+            changes.push(`changed email from "${oldEmail}" to "${email}"`);
+            hasChange = true;
+        }
+        
+        if (!hasChange) {
+            return res.status(400).json({ message: 'No changes detected' });
+        }
+        
+        let updates = [];
+        let values = [];
+        
+        if (name) {
+            updates.push('name = ?');
+            values.push(name);
+        }
+        if (email) {
+            // Check if email already taken
+            db.query('SELECT * FROM Users WHERE email = ? AND user_id != ?', [email, userId], (err, results) => {
+                if (err) return res.status(500).json({ message: 'Database error' });
+                if (results.length > 0) {
+                    return res.status(400).json({ message: 'Email already in use' });
+                }
+            });
+            updates.push('email = ?');
+            values.push(email);
+        }
+        
+        values.push(userId);
+        
+        db.query(
+            `UPDATE Users SET ${updates.join(', ')} WHERE user_id = ?`,
+            values,
+            (err) => {
+                if (err) {
+                    return res.status(500).json({ message: 'Database error', error: err.message });
+                }
+                
+                // Log the profile update
+                const changeText = changes.join(', ');
+                db.query(
+                    'INSERT INTO Logs (user_id, action, details) VALUES (?, "edit_profile", ?)',
+                    [userId, changeText],
+                    (logErr) => { if (logErr) console.error('Failed to log profile update:', logErr.message); }
+                );
+                
+                res.json({ message: 'Profile updated successfully', changes: changes });
+            }
+        );
+    });
 };
 
 // CHANGE own password
+// CHANGE own password (requires current password)
 export const changeMyPassword = (req, res) => {
     const userId = req.user.user_id;
     const { current_password, new_password } = req.body;
@@ -333,6 +370,7 @@ export const changeMyPassword = (req, res) => {
         return res.status(400).json({ message: 'New password must be at least 6 characters' });
     }
     
+    // Get current hashed password
     db.query('SELECT password FROM Users WHERE user_id = ?', [userId], (err, results) => {
         if (err) {
             return res.status(500).json({ message: 'Database error', error: err.message });
@@ -352,6 +390,14 @@ export const changeMyPassword = (req, res) => {
                 if (err) {
                     return res.status(500).json({ message: 'Database error', error: err.message });
                 }
+                
+                // Log the password change
+                db.query(
+                    'INSERT INTO Logs (user_id, action, details) VALUES (?, "change_password", "changed their password")',
+                    [userId],
+                    (logErr) => { if (logErr) console.error('Failed to log password change:', logErr.message); }
+                );
+                
                 res.json({ message: 'Password changed successfully' });
             }
         );

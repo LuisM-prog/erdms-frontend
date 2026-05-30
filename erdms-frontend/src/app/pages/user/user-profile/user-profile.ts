@@ -13,36 +13,51 @@ import { AuthService } from '../../../services/auth.service';
   styleUrl: './user-profile.css'
 })
 export class UserProfileComponent implements OnInit {
+  // User Data
   loggedInUser: any = null;
   userPosition: string = 'Employee';
-
-  // Form bindings
-  updatedName: string = '';
-  updatedEmail: string = '';
-  currentPasswordInput: string = '';
-  newPasswordInput: string = '';
-  confirmPasswordInput: string = '';
-
+  profilePicture: string = '';
+  profilePictureFile: File | null = null;
+  profilePicturePreview: string | null = null;
+  
+  // Edit Mode
+  isEditing = false;
   isLoading = false;
+  isUploading = false;
   errorMessage = '';
+  successMessage = '';
+  
+  // Personal Information Form
+  editedName = '';
+  editedEmail = '';
+  
+  // Password Change Form
+  currentPassword = '';
+  newPassword = '';
+  confirmPassword = '';
+  showCurrentPassword = false;
+  showNewPassword = false;
+  showConfirmPassword = false;
 
   constructor(
-    private router: Router, 
+    private router: Router,
     private state: StateService,
     public auth: AuthService
   ) {}
 
-  async ngOnInit(): Promise<void> {
+  async ngOnInit() {
     await this.loadProfile();
+    this.loadProfilePicture();
   }
 
   async loadProfile() {
     this.isLoading = true;
+    this.errorMessage = '';
     try {
       this.loggedInUser = await this.state.getMyProfile();
       if (this.loggedInUser) {
-        this.updatedName = this.loggedInUser.name;
-        this.updatedEmail = this.loggedInUser.email;
+        this.editedName = this.loggedInUser.name;
+        this.editedEmail = this.loggedInUser.email;
         this.userPosition = this.loggedInUser.role_name === 'admin' ? 'Administrator' : 'Employee';
       }
     } catch (error) {
@@ -53,66 +68,201 @@ export class UserProfileComponent implements OnInit {
     }
   }
 
+  loadProfilePicture() {
+    const savedPicture = localStorage.getItem(`profile_pic_${this.auth.currentUser()?.user_id}`);
+    if (savedPicture) {
+      this.profilePicture = savedPicture;
+      this.profilePicturePreview = savedPicture;
+    } else {
+      // Generate initial avatar
+      const initial = this.loggedInUser?.name?.charAt(0).toUpperCase() || 'U';
+      this.profilePicture = initial;
+    }
+  }
+
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      // Check file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        this.errorMessage = 'Profile picture must be less than 2MB';
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        this.errorMessage = 'Please select an image file (JPEG, PNG, GIF)';
+        return;
+      }
+      
+      this.profilePictureFile = file;
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.profilePicturePreview = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  async uploadProfilePicture() {
+    if (!this.profilePictureFile) return;
+    
+    this.isUploading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    
+    try {
+      // Convert to base64 and save to localStorage
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        const base64 = e.target.result;
+        const userId = this.auth.currentUser()?.user_id;
+        localStorage.setItem(`profile_pic_${userId}`, base64);
+        this.profilePicture = base64;
+        this.profilePicturePreview = base64;
+        this.successMessage = 'Profile picture updated successfully!';
+        this.profilePictureFile = null;
+        
+        setTimeout(() => {
+          this.successMessage = '';
+        }, 3000);
+      };
+      reader.readAsDataURL(this.profilePictureFile);
+    } catch (error) {
+      this.errorMessage = 'Failed to upload profile picture';
+    } finally {
+      this.isUploading = false;
+    }
+  }
+
+  removeProfilePicture() {
+    const userId = this.auth.currentUser()?.user_id;
+    localStorage.removeItem(`profile_pic_${userId}`);
+    const initial = this.loggedInUser?.name?.charAt(0).toUpperCase() || 'U';
+    this.profilePicture = initial;
+    this.profilePicturePreview = null;
+    this.profilePictureFile = null;
+    this.successMessage = 'Profile picture removed';
+    
+    setTimeout(() => {
+      this.successMessage = '';
+    }, 3000);
+  }
+
+  toggleEditMode() {
+    this.isEditing = !this.isEditing;
+    if (!this.isEditing) {
+      this.editedName = this.loggedInUser?.name || '';
+      this.editedEmail = this.loggedInUser?.email || '';
+    }
+    this.errorMessage = '';
+    this.successMessage = '';
+  }
+
   async saveProfileChanges() {
-    if (!this.updatedName.trim() || !this.updatedEmail.trim()) {
-      alert('Full Name and Email address fields cannot be left empty.');
+    if (!this.editedName.trim() || !this.editedEmail.trim()) {
+      this.errorMessage = 'Name and email cannot be empty';
       return;
     }
 
     this.isLoading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
     const success = await this.state.updateMyProfile({
-      name: this.updatedName.trim(),
-      email: this.updatedEmail.trim()
+      name: this.editedName.trim(),
+      email: this.editedEmail.trim()
     });
 
     if (success) {
-      alert('Your profile details have been successfully updated.');
+      this.successMessage = 'Profile updated successfully!';
       await this.loadProfile();
+      this.isEditing = false;
+      
+      setTimeout(() => {
+        this.successMessage = '';
+      }, 3000);
     } else {
-      alert('Failed to update profile. Please try again.');
+      this.errorMessage = 'Failed to update profile. Email may already be in use.';
     }
     this.isLoading = false;
   }
 
-  async changeUserPassword() {
-    if (!this.currentPasswordInput || !this.newPasswordInput || !this.confirmPasswordInput) {
-      alert('Please complete all password fields to update security credentials.');
+  async changePassword() {
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    if (!this.currentPassword) {
+      this.errorMessage = 'Current password is required';
       return;
     }
 
-    if (this.newPasswordInput !== this.confirmPasswordInput) {
-      alert('Your new password and confirmation password do not match.');
+    if (!this.newPassword) {
+      this.errorMessage = 'New password is required';
       return;
     }
 
-    if (this.newPasswordInput.length < 6) {
-      alert('For better security, your new password should be at least 6 characters long.');
+    if (this.newPassword.length < 6) {
+      this.errorMessage = 'New password must be at least 6 characters';
+      return;
+    }
+
+    if (this.newPassword !== this.confirmPassword) {
+      this.errorMessage = 'New password and confirmation do not match';
       return;
     }
 
     this.isLoading = true;
+
     const success = await this.state.changeMyPassword(
-      this.currentPasswordInput,
-      this.newPasswordInput
+      this.currentPassword,
+      this.newPassword
     );
 
     if (success) {
-      alert('Your account security password has been changed successfully!');
-      this.currentPasswordInput = '';
-      this.newPasswordInput = '';
-      this.confirmPasswordInput = '';
+      this.successMessage = 'Password changed successfully!';
+      this.currentPassword = '';
+      this.newPassword = '';
+      this.confirmPassword = '';
+      
+      setTimeout(() => {
+        this.successMessage = '';
+      }, 3000);
     } else {
-      alert('Failed to change password. Please check your current password and try again.');
+      this.errorMessage = 'Current password is incorrect';
     }
     this.isLoading = false;
   }
 
-  navigateToTab(routePath: string): void {
-    this.router.navigate([routePath]);
+  getRandomColor(name: string): string {
+    const colors = [
+      '#2563eb', '#10b981', '#f59e0b', '#ef4444', 
+      '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
   }
 
-  executeSignOut(): void {
-    if (confirm('Are you sure you want to terminate this active session?')) {
+  getProfileBgColor(): string {
+    return this.getRandomColor(this.loggedInUser?.name || 'User');
+  }
+
+
+  navigateToDocuments() {
+    this.router.navigate(['/user/document-management']);
+  }
+
+  navigateToDashboard() {
+  this.router.navigate(['/user/dashboard']);
+}
+
+  executeSignOut() {
+    if (confirm('Are you sure you want to log out?')) {
       this.auth.logout();
     }
   }

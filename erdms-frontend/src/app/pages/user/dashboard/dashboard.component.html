@@ -1,52 +1,91 @@
-<div class="wireframe-container">
+<div class="dashboard-container">
   
-  <aside class="left-sidebar">
-    <div class="user-avatar-area"></div>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">🛡️</div>
+      <div class="brand-text">
+        <h3>ERDMS</h3>
+        <small>User Portal</small>
+      </div>
+    </div>
     
-    <nav class="nav-links-stack">
-      <button (click)="navigateToTab('/user/dashboard')" class="nav-tab-btn active">
-        <span class="btn-icon">📊</span> Dashboard
-      </button>
-      <button (click)="navigateToTab('/user/document-management')" class="nav-tab-btn">
-        <span class="btn-icon">📁</span> Document Management
-      </button>
-      <button (click)="navigateToTab('/user/user-profile')" class="nav-tab-btn">
-        <span class="btn-icon">👤</span> Profile
-      </button>
+    <nav class="sidebar-menu">
+      <a class="menu-item active">
+        <span class="icon">📊</span> Dashboard
+      </a>
+      <a class="menu-item" (click)="navigateToDocuments()">
+        <span class="icon">📁</span> Documents
+      </a>
+      <a class="menu-item" (click)="navigateToProfile()">
+        <span class="icon">👤</span> Profile
+      </a>
     </nav>
+
+    <div class="sidebar-footer">
+      <a class="menu-item logout" (click)="executeSignOut()">
+        <span class="icon">🚪</span> Sign Out
+      </a>
+    </div>
   </aside>
 
-  <main class="viewport-main">
-    <header class="top-navbar-bar">
-      <div class="spacer-flex"></div>
-      <button (click)="executeSignOut()" class="log-out-action-button">
-        🚪 Log out
-      </button>
-    </header>
-
-    <div class="main-body-workspace">
-      <div class="identity-badge-row">
-        <div class="badge-text-name">Welcome Back, {{ loggedInUser ? loggedInUser.name : 'User' }}</div>
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="main-header">
+      <div class="header-title">
+        <h1>My Dashboard</h1>
+        <p>Welcome back, {{ loggedInUser?.name || 'User' }}</p>
       </div>
-
-      <div class="dashboard-activity-panel">
-        <div class="panel-heading">My Recent Workspace Activity Logs</div>
-        
-        <div class="timeline-scroll-area">
-          <div *ngFor="let log of userLogs" class="activity-timeline-row">
-            <div class="activity-content-block">
-              <span class="activity-message-text">📝 {{ log.action }}</span>
-              <span class="activity-timestamp-label">{{ log.timestamp }}</span>
-            </div>
-          </div>
-
-          <div *ngIf="userLogs.length === 0" class="empty-timeline-fallback">
-            No workspace activity records linked to this account identity loop sequence.
-          </div>
+      <div class="header-profile">
+        <div class="profile-avatar">👤</div>
+        <div class="profile-info">
+          <span class="profile-name">{{ loggedInUser?.name || 'User' }}</span>
+          <span class="profile-role">{{ loggedInUser?.role_name === 'admin' ? 'Administrator' : 'Employee' }}</span>
         </div>
       </div>
+    </header>
 
+    <div class="content-body">
+      
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading your dashboard...</p>
+      </div>
+
+      <!-- Error Message -->
+      <div *ngIf="errorMessage" class="error-message">
+        ⚠️ {{ errorMessage }}
+      </div>
+
+      <!-- Dashboard Content -->
+      <div *ngIf="!isLoading && !errorMessage">
+        
+        <!-- Recent Activity Logs -->
+        <div class="activity-panel">
+          <div class="panel-header">
+            <h2>📋 My Recent Workspace Activity Logs</h2>
+            <span class="badge">{{ userLogs.length }} Total Activities</span>
+          </div>
+          
+          <div class="panel-body">
+            <div *ngIf="userLogs.length === 0" class="empty-state">
+              <span class="empty-icon">📭</span>
+              <p>No activity records found for your account yet.</p>
+              <p class="empty-hint">Activities will appear here when you upload, download, or manage documents.</p>
+            </div>
+            
+            <div *ngFor="let log of userLogs" class="activity-item">
+              <div class="activity-icon">{{ getActionIcon(log.action) }}</div>
+              <div class="activity-details">
+                <div class="activity-action">{{ getActionDescription(log) }}</div>
+                <div class="activity-time">{{ formatTimestamp(log.timestamp) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </main>
-
 </div>

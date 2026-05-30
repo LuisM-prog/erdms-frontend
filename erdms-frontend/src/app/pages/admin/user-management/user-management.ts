@@ -4,12 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
 import { AuthService } from '../../../services/auth.service';
+import { SidebarComponent } from '../../../components/sidebar/sidebar.component';
 import { User } from '../../../models/backend-models';
 
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './user-management.html',
   styleUrls: ['./user-management.css']
 })
@@ -20,15 +21,15 @@ export class UserManagementComponent implements OnInit {
   
   searchQuery = '';
   filterRoles: { [key: number]: boolean } = {
-    1: true,  // Admin
-    2: true   // Employees
+    1: true,
+    2: true
   };
 
   inputUsername = '';
   inputFullName = ''; 
   inputEmail = '';
   inputPassword = '';
-  selectedRoleId = 2;  // Default to employees (role_id = 2)
+  selectedRoleId = 2;
   
   usersList: User[] = [];
   isLoading = false;
@@ -51,7 +52,6 @@ export class UserManagementComponent implements OnInit {
       this.usersList = await this.state.getAllUsers();
     } catch (error: any) {
       this.errorMessage = error.message || 'Failed to load users';
-      console.error('Error loading users:', error);
     } finally {
       this.isLoading = false;
     }
@@ -73,18 +73,6 @@ export class UserManagementComponent implements OnInit {
 
   getRoleBadgeClass(roleId: number): string {
     return roleId === 1 ? 'role-badge-admin' : 'role-badge-employee';
-  }
-
-  // Navigation Handlers
-  navToDashboard() { this.router.navigate(['/admin/dashboard']); }
-  navToDocManagement() { this.router.navigate(['/admin/folder-management']); }
-  navToUserManagement() { this.router.navigate(['/admin/user-management']); }
-  navToAuditLogs() { this.router.navigate(['/admin/audit-logs']); }
-
-  executeSignOut() {
-    if (confirm('Are you sure you want to sign out?')) {
-      this.auth.logout();
-    }
   }
 
   openCreateModal() {
@@ -117,7 +105,6 @@ export class UserManagementComponent implements OnInit {
     this.isLoading = true;
 
     if (this.isEditing && this.editingUserUid !== null) {
-      // Update existing user
       const updateData: any = {};
       if (this.inputFullName.trim() !== '') updateData.name = this.inputFullName.trim();
       if (this.inputEmail.trim() !== '') updateData.email = this.inputEmail.trim();
@@ -129,10 +116,9 @@ export class UserManagementComponent implements OnInit {
         await this.loadUsers();
         this.closeCreateModal();
       } else {
-        alert('Failed to update user. Please try again.');
+        alert('Failed to update user.');
       }
     } else {
-      // Create new user
       const result = await this.state.createUser({
         name: this.inputFullName.trim(),
         email: this.inputEmail.trim(),
@@ -140,11 +126,11 @@ export class UserManagementComponent implements OnInit {
       });
       
       if (result && result.temporary_password) {
-        alert(`User created successfully!\n\nTemporary Password: ${result.temporary_password}\n\nPlease provide this password to the user. They should change it after first login.`);
+        alert(`User created successfully!\n\nTemporary Password: ${result.temporary_password}`);
         await this.loadUsers();
         this.closeCreateModal();
       } else {
-        alert('Failed to create user. Please try again.');
+        alert('Failed to create user.');
       }
     }
     this.isLoading = false;
@@ -152,7 +138,7 @@ export class UserManagementComponent implements OnInit {
 
   async toggleUserStatus(user: User) {
     if (user.user_id === this.auth.currentUser()?.user_id) {
-      alert('Security Exception: You cannot deactivate your own account.');
+      alert('You cannot deactivate your own account.');
       return;
     }
     
@@ -163,34 +149,34 @@ export class UserManagementComponent implements OnInit {
       alert(`User ${user.name} has been ${newStatus === 'active' ? 'activated' : 'deactivated'}.`);
       await this.loadUsers();
     } else {
-      alert('Failed to change user status. Please try again.');
+      alert('Failed to change user status.');
     }
   }
 
   async resetUserPassword(user: User) {
-    if (confirm(`Reset password for "${user.name}"? A new temporary password will be generated.`)) {
+    if (confirm(`Reset password for "${user.name}"?`)) {
       const result = await this.state.resetUserPassword(user.user_id);
       if (result && result.temporary_password) {
-        alert(`Password reset successful!\n\nNew Temporary Password: ${result.temporary_password}\n\nPlease provide this to the user.`);
+        alert(`Password reset successful!\n\nNew Temporary Password: ${result.temporary_password}`);
       } else {
-        alert('Failed to reset password. Please try again.');
+        alert('Failed to reset password.');
       }
     }
   }
 
   async removeUserAccount(user: User) {
     if (user.user_id === this.auth.currentUser()?.user_id) {
-      alert('Operation Denied: You cannot delete your own account.');
+      alert('You cannot delete your own account.');
       return;
     }
     
-    if (confirm(`Are you sure you want to permanently delete "${user.name}"? This action cannot be undone.`)) {
+    if (confirm(`Permanently delete "${user.name}"?`)) {
       const success = await this.state.deleteUser(user.user_id);
       if (success) {
-        alert(`User "${user.name}" has been removed from the system.`);
+        alert(`User "${user.name}" has been removed.`);
         await this.loadUsers();
       } else {
-        alert('Failed to delete user. Please try again.');
+        alert('Failed to delete user.');
       }
     }
   }

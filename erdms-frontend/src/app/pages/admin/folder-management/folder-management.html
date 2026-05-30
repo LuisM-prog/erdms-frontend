@@ -1,41 +1,12 @@
 <div class="wireframe-layout">
   
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-logo">🛡️</div>
-      <div class="brand-text">
-        <h3>ERDMS</h3>
-        <small>Group 4 Platform</small>
-      </div>
-    </div>
-    
-    <nav class="sidebar-menu">
-      <a (click)="navToDashboard()" class="menu-item" style="cursor: pointer;">
-        <span class="icon">🏠</span> Dashboard
-      </a>
-      <a (click)="navToDocManagement()" class="menu-item active" style="cursor: pointer;">
-        <span class="icon">📄</span> Document Management
-      </a>
-      <a (click)="navToUserManagement()" class="menu-item" style="cursor: pointer;">
-        <span class="icon">👤</span> User Management
-      </a>
-      <a (click)="navToAuditLogs()" class="menu-item" style="cursor: pointer;">
-        <span class="icon">🛡️</span> Logs & Audit Trail
-      </a>
-    </nav>
-    
-    <div class="sidebar-footer">
-      <a (click)="executeSignOut()" class="menu-item logout" style="cursor: pointer;">
-        <span class="icon">🚪</span> Sign Out
-      </a>
-    </div>
-  </aside>
+  <app-sidebar></app-sidebar>
 
   <main class="main-content">
     <header class="main-header">
-      <div class="header-title">
-        <h1>Document & Folder Management</h1>
-        <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b;">Admin Dashboard - Manage folders and documents</p>
+      <div class="header-search">
+        <span>🔍</span>
+        <input type="text" [(ngModel)]="searchQuery" placeholder="Search folders or documents...">
       </div>
       
       <div class="header-profile">
@@ -47,115 +18,123 @@
       </div>
     </header>
 
-    <div class="content-body" style="padding: 24px;">
+    <div class="content-body">
       
-      <!-- Loading State -->
-      <div *ngIf="isLoading" style="text-align: center; padding: 40px; color: #64748b;">
-        Loading...
-      </div>
+      <div *ngIf="isLoading" class="loading-state">Loading...</div>
+      <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
 
-      <!-- Error Message -->
-      <div *ngIf="errorMessage" style="background: #fee2e2; color: #dc2626; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 20px;">
-        {{ errorMessage }}
-      </div>
-
-      <div *ngIf="!isLoading && !errorMessage" style="display: flex; gap: 24px; flex-wrap: wrap;">
+      <div class="two-column-layout" *ngIf="!isLoading">
         
-        <!-- Folders Panel -->
-        <div style="flex: 1; min-width: 280px;">
-          <div class="wireframe-panel">
-            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
-              <h2>📁 Folders</h2>
-              <button class="btn-primary" (click)="openCreateFolderModal()" style="padding: 6px 12px; font-size: 12px;">+ New Folder</button>
-            </div>
-            <div class="panel-body">
-              <div *ngIf="folders.length === 0" style="padding: 40px; text-align: center; color: #94a3b8;">
-                No folders yet. Click "New Folder" to create one.
-              </div>
-              <div *ngFor="let folder of folders" 
-                  (click)="selectFolder(folder)"
-                  [style.background-color]="selectedFolderId === folder.folder_id ? '#eff6ff' : 'transparent'"
-                  style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; cursor: pointer;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <div>
-                    <span style="font-size: 18px; margin-right: 8px;">📁</span>
-                    <strong>{{ folder.folder_name }}</strong>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                      {{ folder.permissions }} · Created {{ folder.created_at | date:'shortDate' }}
-                    </div>
-                  </div>
-                  <button (click)="deleteFolder(folder.folder_id, folder.folder_name); $event.stopPropagation()" 
-                          style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;"
-                          title="Delete Folder">🗑️</button>
+        <!-- Left Panel: Folder Tree -->
+        <div class="folder-tree-panel">
+          <div class="panel-header">
+            <h2>📁 Folder Structure</h2>
+            <button class="btn-primary" (click)="openCreateRootFolderModal()">+ New Folder</button>
+          </div>
+          <div class="folder-tree">
+            <div *ngFor="let folder of folderTree" class="folder-node">
+              <div class="folder-item" 
+                   [class.selected]="selectedFolder?.folder_id === folder.folder_id"
+                   (click)="selectFolder(folder)">
+                <span class="folder-icon">{{ getFolderIcon(folder) }}</span>
+                <span class="folder-name">{{ folder.folder_name }}</span>
+                <span class="folder-badge">{{ getPermissionIcon(folder.permissions) }}</span>
+                <div class="folder-actions">
+                  <button class="icon-btn" (click)="openCreateSubfolderModal(folder); $event.stopPropagation()" title="Add Subfolder">➕</button>
+                  <button class="icon-btn delete-btn" (click)="deleteFolder(folder, $event)" title="Delete">🗑️</button>
                 </div>
               </div>
+              <div class="subfolders" *ngIf="folder.subfolders.length > 0">
+                <div *ngFor="let sub of folder.subfolders" class="subfolder-item"
+                     [class.selected]="selectedFolder?.folder_id === sub.folder_id"
+                     (click)="selectFolder(sub)">
+                  <span class="folder-icon">{{ getFolderIcon(sub) }}</span>
+                  <span class="folder-name">{{ sub.folder_name }}</span>
+                  <span class="folder-badge">{{ getPermissionIcon(sub.permissions) }}</span>
+                  <div class="folder-actions">
+                    <button class="icon-btn" (click)="openCreateSubfolderModal(sub); $event.stopPropagation()" title="Add Subfolder">➕</button>
+                    <button class="icon-btn delete-btn" (click)="deleteFolder(sub, $event)" title="Delete">🗑️</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="folderTree.length === 0" class="empty-folder-tree">
+              No folders yet. Click "New Folder" to create one.
             </div>
           </div>
         </div>
 
-        <!-- Selected Folder Details Panel -->
-        <div style="flex: 2; min-width: 400px;">
-          <div class="wireframe-panel" *ngIf="selectedFolderId">
-            <div class="panel-header">
-              <h2>📂 {{ selectedFolderName }}</h2>
-            </div>
-            <div class="panel-body" style="padding: 20px;">
-              
-              <!-- Edit Folder Section -->
-              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-                <h3 style="margin: 0 0 12px 0; font-size: 14px;">Edit Folder</h3>
-                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                  <input type="text" [(ngModel)]="selectedFolderName" style="flex: 2; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                  <select [(ngModel)]="selectedFolderPermission" style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                    <option value="public">🌍 Public</option>
-                    <option value="private">🔒 Private</option>
-                    <option value="restricted">⚠️ Restricted</option>
-                  </select>
-                  <button (click)="updateFolder()" class="btn-primary" style="padding: 8px 16px;">Save Changes</button>
-                </div>
-              </div>
+        <!-- Right Panel: Selected Folder Details -->
+        <div class="folder-details-panel" *ngIf="selectedFolder">
+          <div class="panel-header">
+            <h2>{{ getFolderIcon(selectedFolder) }} {{ selectedFolder.folder_name }}</h2>
+            <button class="btn-upload" (click)="openUploadModal()">+ Upload Document</button>
+          </div>
 
-              <!-- Documents Section -->
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 style="margin: 0; font-size: 14px;">📄 Documents in this Folder</h3>
-                <button (click)="openUploadModal()" class="btn-primary" style="padding: 6px 12px; font-size: 12px;">+ Upload Document</button>
+          <!-- Folder Settings -->
+          <div class="folder-settings">
+            <h3>⚙️ Folder Settings</h3>
+            <div class="settings-row">
+              <div class="settings-field">
+                <label>Folder Name</label>
+                <input type="text" [(ngModel)]="selectedFolder.folder_name">
               </div>
-
-              <!-- Documents Table -->
-              <div *ngIf="documentsInSelectedFolder.length === 0" style="padding: 40px; text-align: center; color: #94a3b8;">
-                No documents in this folder. Click "Upload Document" to add one.
+              <div class="settings-field">
+                <label>Permissions</label>
+                <select [(ngModel)]="selectedFolder.permissions">
+                  <option value="public">🌍 Public - Everyone can access</option>
+                  <option value="private">🔒 Private - Only specific users</option>
+                  <option value="restricted">⚠️ Restricted - Limited access</option>
+                </select>
               </div>
-              <table class="activity-table" *ngIf="documentsInSelectedFolder.length > 0">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Category</th>
-                    <th>Accessibility</th>
-                    <th>Uploaded</th>
-                    <th style="text-align: center;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let doc of documentsInSelectedFolder">
-                    <td><strong>{{ doc.title }}</strong><br><small style="color: #64748b;">{{ doc.description }}</small></td>
-                    <td><span style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 11px;">{{ doc.category || 'General' }}</span></td>
-                    <td><span class="status-indicator" [ngClass]="doc.accessibility === 'public' ? 'active' : 'deactivated'">{{ doc.accessibility }}</span></td>
-                    <td><small>{{ doc.created_at | date:'shortDate' }}</small></td>
-                    <td style="text-align: center;">
-                      <button (click)="deleteDocument(doc.document_id, doc.title)" 
-                              style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px;"
-                              title="Delete Document">🗑️</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <button class="btn-save" (click)="updateFolder()">Save Changes</button>
             </div>
           </div>
 
-          <!-- No Folder Selected -->
-          <div class="wireframe-panel" *ngIf="!selectedFolderId && folders.length > 0" style="padding: 40px; text-align: center; color: #64748b;">
-            Select a folder from the left panel to manage its documents.
+          <!-- Subfolders Section -->
+          <div class="subfolders-section" *ngIf="getCurrentSubfolders().length > 0">
+            <h3>📂 Subfolders</h3>
+            <div class="subfolder-list">
+              <div *ngFor="let sub of getCurrentSubfolders()" class="subfolder-card">
+                <span class="subfolder-icon">📁</span>
+                <span class="subfolder-name">{{ sub.folder_name }}</span>
+                <span class="subfolder-badge">{{ getPermissionIcon(sub.permissions) }}</span>
+                <button class="icon-btn small" (click)="selectFolder(sub)" title="Open">📂</button>
+                <button class="icon-btn small delete-btn" (click)="deleteFolder(sub, $event)" title="Delete">🗑️</button>
+              </div>
+            </div>
           </div>
+
+          <!-- Documents Section -->
+          <div class="documents-section">
+            <h3>📄 Documents</h3>
+            <div *ngIf="getCurrentDocuments().length === 0" class="empty-docs">
+              No documents in this folder. Click "Upload Document" to add one.
+            </div>
+            <table class="documents-table" *ngIf="getCurrentDocuments().length > 0">
+              <thead>
+                <tr><th>Title</th><th>Category</th><th>Accessibility</th><th>Uploaded</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let doc of getCurrentDocuments()">
+                  <td><strong>{{ doc.title }}</strong><br><small>{{ doc.description }}</small></td>
+                  <td><span class="category-badge">{{ doc.category || 'General' }}</span></td>
+                  <td><span class="access-badge" [class]="doc.accessibility">{{ doc.accessibility }}</span></td>
+                  <td><small>{{ doc.created_at | date:'shortDate' }}</small></td>
+                  <td class="action-buttons">
+                    <button class="action-btn download-btn" (click)="downloadDocument(doc)" title="Download">📥</button>
+                    <button class="action-btn delete-btn" (click)="deleteDocument(doc, $event)" title="Delete">🗑️</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- No Folder Selected -->
+        <div class="no-folder-selected" *ngIf="!selectedFolder && folderTree.length > 0">
+          <span>📁</span>
+          <p>Select a folder from the left panel to manage its contents.</p>
         </div>
 
       </div>
@@ -165,63 +144,88 @@
 
 <!-- Create Folder Modal -->
 <div class="modal-overlay" *ngIf="showFolderModal">
-  <div class="modal-window" style="max-width: 400px;">
-    <div class="modal-top-bar">
-      <span class="modal-close-trigger" (click)="showFolderModal = false">&times;</span>
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3>{{ isSubfolderMode ? 'Create Subfolder' : 'Create New Folder' }}</h3>
+      <button class="modal-close" (click)="showFolderModal = false">×</button>
     </div>
-    <div class="modal-content-wrapper">
-      <div class="modal-gray-panel" style="width: 100%; box-sizing: border-box;">
-        <h2>Create New Folder</h2>
-        <div class="modal-form-fields" style="margin-top: 15px;">
-          <input type="text" [(ngModel)]="inputFolderName" class="modal-field-input" placeholder="Folder Name">
-          <select [(ngModel)]="inputFolderPermission" class="modal-field-select">
-            <option value="public">🌍 Public - Everyone can access</option>
-            <option value="private">🔒 Private - Only specific users</option>
-            <option value="restricted">⚠️ Restricted - Limited access</option>
-          </select>
-          <button type="button" class="modal-submit-btn" (click)="createFolder()">Create Folder</button>
-        </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Folder Name</label>
+        <input type="text" [(ngModel)]="inputFolderName" placeholder="Enter folder name" autofocus>
       </div>
+      <div class="form-group">
+        <label>Permissions</label>
+        <select [(ngModel)]="inputFolderPermission">
+          <option value="public">🌍 Public - Everyone can access</option>
+          <option value="private">🔒 Private - Only specific users</option>
+          <option value="restricted">⚠️ Restricted - Limited access</option>
+        </select>
+      </div>
+      <div *ngIf="isSubfolderMode" class="info-note">
+        <span>📌</span> This folder will be created inside "{{ selectedFolder?.folder_name }}"
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="showFolderModal = false">Cancel</button>
+      <button class="btn-save" (click)="createFolder()">Create Folder</button>
     </div>
   </div>
 </div>
 
 <!-- Upload Document Modal -->
 <div class="modal-overlay" *ngIf="showDocModal">
-  <div class="modal-window" style="max-width: 450px;">
-    <div class="modal-top-bar">
-      <span class="modal-close-trigger" (click)="showDocModal = false">&times;</span>
+  <div class="modal-container upload-modal">
+    <div class="modal-header">
+      <h3>📤 Upload Document</h3>
+      <button class="modal-close" (click)="showDocModal = false">×</button>
     </div>
-    <div class="modal-content-wrapper">
-      <div class="modal-gray-panel" style="width: 100%; box-sizing: border-box;">
-        <h2>Upload Document</h2>
-        <div class="modal-form-fields" style="margin-top: 15px;">
-          <div style="border: 2px dashed #cbd5e1; padding: 20px; border-radius: 6px; text-align: center; background: #fff; margin-bottom: 12px;">
-            <span style="font-size: 30px; display: block; margin-bottom: 5px;">💻</span>
-            <label for="file-picker" style="cursor: pointer; color: #2563eb; font-weight: 500; text-decoration: underline;">
-              Choose file from Laptop
-            </label>
-            <input type="file" id="file-picker" style="display: none;" (change)="onFileSelected($event)">
-            <div *ngIf="selectedFile" style="margin-top: 10px; font-size: 13px; color: #1e293b;">
-              <strong>Selected:</strong> {{ selectedFile.name }}
-            </div>
-          </div>
-          <input type="text" [(ngModel)]="inputDocTitle" class="modal-field-input" placeholder="Document Title">
-          <input type="text" [(ngModel)]="inputDocDescription" class="modal-field-input" placeholder="Description (optional)">
-          <select [(ngModel)]="inputDocCategory" class="modal-field-select">
+    <div class="modal-body">
+      <div class="upload-area" (click)="fileInput.click()">
+        <input type="file" #fileInput (change)="onFileSelected($event)" style="display: none">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text" *ngIf="!selectedFile">Click to select a file from your computer</div>
+        <div class="upload-text" *ngIf="selectedFile">✓ Selected: {{ selectedFile.name }}</div>
+        <div class="upload-hint" *ngIf="!selectedFile">PDF, DOC, DOCX, TXT, XLS, XLSX (Max 10MB)</div>
+      </div>
+      
+      <div class="form-group">
+        <label>Document Title</label>
+        <input type="text" [(ngModel)]="inputDocTitle" placeholder="Enter document title">
+      </div>
+      
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <textarea [(ngModel)]="inputDocDescription" rows="2" placeholder="Enter description"></textarea>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select [(ngModel)]="inputDocCategory">
             <option value="General">General</option>
             <option value="Invoice">Invoice / Legal</option>
             <option value="Analytics">Analytics</option>
             <option value="Report">Report</option>
           </select>
-          <select [(ngModel)]="inputDocAccessibility" class="modal-field-select">
-            <option value="public">Public Access</option>
-            <option value="private">Private Access</option>
-            <option value="restricted">Restricted Access</option>
+        </div>
+        <div class="form-group">
+          <label>Accessibility</label>
+          <select [(ngModel)]="inputDocAccessibility">
+            <option value="public">🌍 Public</option>
+            <option value="private">🔒 Private</option>
+            <option value="restricted">⚠️ Restricted</option>
           </select>
-          <button type="button" class="modal-submit-btn" (click)="uploadDocument()">Upload Document</button>
         </div>
       </div>
+      
+      <div class="info-note">
+        <span>ℹ️</span> Uploading to folder: <strong>{{ selectedFolder?.folder_name }}</strong>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="showDocModal = false">Cancel</button>
+      <button class="btn-save" (click)="uploadDocument()" [disabled]="!selectedFile">Upload Document</button>
     </div>
   </div>
 </div>
