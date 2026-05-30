@@ -306,7 +306,8 @@ export class StateService {
 
   async getLogsByUser(userId: number, page = 1, limit = 20): Promise<{ logs: Log[]; total: number }> {
     try {
-      return await firstValueFrom(this.http.get<any>(`/logs/user/${userId}?page=${page}&limit=${limit}`));
+      // Use the new 'my-logs' endpoint which doesn't require admin
+      return await firstValueFrom(this.http.get<any>(`/logs/my-logs?page=${page}&limit=${limit}`));
     } catch (error) {
       console.error(`Failed to fetch logs for user ${userId}:`, error);
       return { logs: [], total: 0 };
@@ -436,5 +437,14 @@ export class StateService {
 
   isCurrentUserAdmin(): boolean {
     return this.auth.isAdmin();
+  }
+
+  async createFolderWithParent(folderData: { folder_name: string; permissions: 'public' | 'private' | 'restricted'; parent_folder_id?: number }): Promise<{ folder_id: number } | null> {
+  try {
+    return await firstValueFrom(this.http.post<{ folder_id: number }>('/folders', folderData));
+  } catch (error) {
+    console.error('Failed to create folder:', error);
+    return null;
+  }
   }
 }

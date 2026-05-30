@@ -8,14 +8,7 @@
         <span>🔍</span>
         <input type="text" [(ngModel)]="searchQuery" placeholder="Search users by name or email...">
       </div>
-      
-      <div class="header-profile">
-        <div class="profile-avatar">👤</div>
-        <div class="profile-info">
-          <span class="profile-name">{{ auth.currentUser()?.name || 'Admin' }}</span>
-          <span class="profile-role">(Admin)</span>
-        </div>
-      </div>
+      <app-admin-header></app-admin-header>
     </header>
 
     <div class="content-body">

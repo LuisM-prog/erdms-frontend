@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
 import { AuthService } from '../../../services/auth.service';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { UserSidebarComponent } from '../../../components/user-sidebar/user-sidebar.component';
+import { UserHeaderComponent } from '../../../components/user-header/user-header.component';
 
 interface FolderNode {
   folder_id: number;
@@ -12,9 +13,10 @@ interface FolderNode {
   created_by: number;
   created_by_name?: string;
   permissions: 'public' | 'private' | 'restricted';
-  parent_id: number | null;
+  parent_folder_id: number | null;
   subfolders: FolderNode[];
   documents: DocumentItem[];
+  isExpanded: boolean;
 }
 
 interface DocumentItem {
@@ -35,14 +37,13 @@ interface DocumentItem {
 @Component({
   selector: 'app-document-explorer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UserSidebarComponent, UserHeaderComponent],
   templateUrl: './document-explorer.html',
   styleUrl: './document-explorer.css'
 })
 export class DocumentExplorerComponent implements OnInit {
   // User Info
   userInfo = { name: 'Loading...', position: 'Employee', email: '', user_id: 0 };
-  profilePicture: string | null = null;
   
   // Data
   allFolders: any[] = [];
@@ -60,20 +61,18 @@ export class DocumentExplorerComponent implements OnInit {
   // Preview Modal
   showPreviewModal = false;
   selectedDocForPreview: DocumentItem | null = null;
-  previewUrl: SafeResourceUrl | null = null;
+  previewUrl: string | null = null;
   isPreviewLoading = false;
 
   constructor(
     private router: Router,
     private state: StateService,
-    public auth: AuthService,
-    private sanitizer: DomSanitizer
+    public auth: AuthService
   ) {}
 
   async ngOnInit() {
     await this.loadUserInfo();
     await this.loadData();
-    this.loadProfilePicture();
   }
 
   async loadUserInfo() {
@@ -85,16 +84,6 @@ export class DocumentExplorerComponent implements OnInit {
         email: currentUser.email,
         user_id: currentUser.user_id
       };
-    }
-  }
-
-  loadProfilePicture() {
-    const userId = this.auth.currentUser()?.user_id;
-    if (userId) {
-      const savedPicture = localStorage.getItem(`profile_pic_${userId}`);
-      if (savedPicture && savedPicture.startsWith('data:image')) {
-        this.profilePicture = savedPicture;
-      }
     }
   }
 
@@ -111,7 +100,7 @@ export class DocumentExplorerComponent implements OnInit {
       this.allDocuments = docs;
       this.buildFolderTree();
       
-      if (this.folderTree.length > 0) {
+      if (this.folderTree.length > 0 && !this.currentFolder) {
         this.selectFolder(this.folderTree[0]);
       }
     } catch (error: any) {
@@ -126,6 +115,7 @@ export class DocumentExplorerComponent implements OnInit {
     const folderMap = new Map<number, FolderNode>();
     const roots: FolderNode[] = [];
 
+    // First, create all folder nodes
     this.allFolders.forEach((folder: any) => {
       folderMap.set(folder.folder_id, {
         folder_id: folder.folder_id,
@@ -133,26 +123,36 @@ export class DocumentExplorerComponent implements OnInit {
         created_by: folder.created_by,
         created_by_name: folder.created_by_name,
         permissions: folder.permissions,
-        parent_id: folder.parent_id || null,
+        parent_folder_id: folder.parent_folder_id || null,
         subfolders: [],
-        documents: []
+        documents: [],
+        isExpanded: false  // Start collapsed
       });
     });
 
+    // Build hierarchy - link children to parents using parent_folder_id
     this.allFolders.forEach((folder: any) => {
       const node = folderMap.get(folder.folder_id);
       if (node) {
-        if (folder.parent_id && folderMap.has(folder.parent_id)) {
-          const parent = folderMap.get(folder.parent_id);
+        if (folder.parent_folder_id && folderMap.has(folder.parent_folder_id)) {
+          const parent = folderMap.get(folder.parent_folder_id);
           if (parent) {
             parent.subfolders.push(node);
           }
-        } else {
+        } else if (!folder.parent_folder_id) {
           roots.push(node);
         }
       }
     });
 
+    // Sort folders alphabetically
+    const sortFolders = (nodes: FolderNode[]) => {
+      nodes.sort((a, b) => a.folder_name.localeCompare(b.folder_name));
+      nodes.forEach(node => sortFolders(node.subfolders));
+    };
+    sortFolders(roots);
+
+    // Add accessible documents to folders
     this.allDocuments.forEach((doc: any) => {
       const hasAccess = this.checkDocumentAccess(doc);
       if (hasAccess) {
@@ -176,12 +176,6 @@ export class DocumentExplorerComponent implements OnInit {
       }
     });
 
-    const sortFolders = (nodes: FolderNode[]) => {
-      nodes.sort((a, b) => a.folder_name.localeCompare(b.folder_name));
-      nodes.forEach(node => sortFolders(node.subfolders));
-    };
-    sortFolders(roots);
-
     this.folderTree = roots;
   }
 
@@ -204,9 +198,42 @@ export class DocumentExplorerComponent implements OnInit {
     return false;
   }
 
+  // Toggle folder expansion
+  toggleFolder(folder: FolderNode, event: Event) {
+    event.stopPropagation();
+    folder.isExpanded = !folder.isExpanded;
+  }
+
+  // Expand all folders
+  expandAll() {
+    const expandAllFolders = (nodes: FolderNode[]) => {
+      nodes.forEach(node => {
+        node.isExpanded = true;
+        if (node.subfolders.length > 0) {
+          expandAllFolders(node.subfolders);
+        }
+      });
+    };
+    expandAllFolders(this.folderTree);
+  }
+
+  // Collapse all folders
+  collapseAll() {
+    const collapseAllFolders = (nodes: FolderNode[]) => {
+      nodes.forEach(node => {
+        node.isExpanded = false;
+        if (node.subfolders.length > 0) {
+          collapseAllFolders(node.subfolders);
+        }
+      });
+    };
+    collapseAllFolders(this.folderTree);
+  }
+
   selectFolder(folder: FolderNode) {
     this.currentFolder = folder;
     
+    // Build navigation path
     this.navigationPath = [];
     const buildPath = (nodes: FolderNode[], target: FolderNode, path: FolderNode[]): boolean => {
       for (const node of nodes) {
@@ -268,7 +295,6 @@ export class DocumentExplorerComponent implements OnInit {
 
   // Preview Document
   async openPreview(doc: DocumentItem) {
-    console.log('Opening preview for:', doc.title);
     this.selectedDocForPreview = doc;
     this.showPreviewModal = true;
     this.isPreviewLoading = true;
@@ -278,8 +304,7 @@ export class DocumentExplorerComponent implements OnInit {
       const blob = await this.state.downloadDocument(doc.document_id);
       if (blob) {
         const url = URL.createObjectURL(blob);
-        this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-        console.log('Preview loaded successfully');
+        this.previewUrl = url;
       } else {
         this.errorMessage = 'Unable to preview document';
       }
@@ -293,11 +318,7 @@ export class DocumentExplorerComponent implements OnInit {
 
   closePreviewModal() {
     if (this.previewUrl) {
-      // Revoke the object URL when closing
-      const url = this.previewUrl.toString();
-      if (url.startsWith('blob:')) {
-        URL.revokeObjectURL(url);
-      }
+      URL.revokeObjectURL(this.previewUrl);
     }
     this.showPreviewModal = false;
     this.selectedDocForPreview = null;
@@ -325,7 +346,6 @@ export class DocumentExplorerComponent implements OnInit {
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-        alert(`Downloading: ${doc.title}`);
       } else {
         alert('You do not have permission to download this document.');
       }
@@ -353,12 +373,13 @@ export class DocumentExplorerComponent implements OnInit {
     return type ? type.toUpperCase() : 'DOC';
   }
 
-  getProfilePicture(): string | null {
-    return this.profilePicture;
-  }
-
-  getInitial(): string {
-    return this.userInfo.name?.charAt(0).toUpperCase() || 'U';
+  getPermissionIcon(permission: string): string {
+    switch (permission) {
+      case 'public': return '🌍';
+      case 'private': return '🔒';
+      case 'restricted': return '⚠️';
+      default: return '📁';
+    }
   }
 
   goToDashboard() {

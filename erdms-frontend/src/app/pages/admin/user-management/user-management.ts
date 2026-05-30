@@ -3,14 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
+import { PendingActionsService } from '../../../services/pending-actions.service';
 import { AuthService } from '../../../services/auth.service';
 import { SidebarComponent } from '../../../components/sidebar/sidebar.component';
+import { AdminHeaderComponent } from '../../../components/admin-header/admin-header.component';
 import { User } from '../../../models/backend-models';
 
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, SidebarComponent, AdminHeaderComponent],
   templateUrl: './user-management.html',
   styleUrls: ['./user-management.css']
 })
@@ -38,7 +40,8 @@ export class UserManagementComponent implements OnInit {
   constructor(
     private router: Router, 
     private state: StateService,
-    public auth: AuthService
+    public auth: AuthService,
+    private pendingActions: PendingActionsService
   ) {}
 
   ngOnInit(): void {
@@ -143,13 +146,30 @@ export class UserManagementComponent implements OnInit {
     }
     
     const newStatus = user.status === 'active' ? 'inactive' : 'active';
-    const success = await this.state.toggleUserStatus(user.user_id, newStatus);
+    const actionType = newStatus === 'active' ? 'activate' : 'deactivate';
     
-    if (success) {
-      alert(`User ${user.name} has been ${newStatus === 'active' ? 'activated' : 'deactivated'}.`);
-      await this.loadUsers();
+    // Check if current user is Super Admin (user_id = 3)
+    const currentUserId = this.auth.currentUser()?.user_id;
+    
+    if (currentUserId === 3) {
+      // Super Admin can change status directly
+      if (confirm(`Are you sure you want to ${actionType} user "${user.name}"?`)) {
+        const success = await this.state.toggleUserStatus(user.user_id, newStatus);
+        if (success) {
+          alert(`User ${user.name} has been ${newStatus === 'active' ? 'activated' : 'deactivated'}.`);
+          await this.loadUsers();
+        } else {
+          alert('Failed to change user status.');
+        }
+      }
     } else {
-      alert('Failed to change user status.');
+      // Regular admin needs Super Admin approval
+      const result = await this.pendingActions.requestUserStatusChange(user.user_id, actionType);
+      if (result) {
+        alert(`Request to ${actionType} "${user.name}" has been sent to Super Admin for approval.`);
+      } else {
+        alert('Failed to send request. Please try again.');
+      }
     }
   }
 

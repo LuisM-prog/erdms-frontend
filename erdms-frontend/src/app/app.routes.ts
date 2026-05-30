@@ -8,6 +8,8 @@ import { DashboardComponent as AdminDashboard } from './pages/admin/dashboard/da
 import { UserManagementComponent } from './pages/admin/user-management/user-management';
 import { FolderManagementComponent } from './pages/admin/folder-management/folder-management';
 import { LogsAuditComponent } from './pages/admin/logs-audit/logs-audit.component';
+import { AdminProfileComponent } from './pages/admin/admin-profile/admin-profile.component';
+import { PendingApprovalsComponent } from './pages/admin/pending-approvals/pending-approvals.component';
 
 // User Components
 import { DashboardComponent as UserDashboard } from './pages/user/dashboard/dashboard.component';
@@ -29,6 +31,8 @@ export const routes: Routes = [
       { path: 'user-management', component: UserManagementComponent },
       { path: 'folder-management', component: FolderManagementComponent },
       { path: 'audit-logs', component: LogsAuditComponent },
+      { path: 'profile', component: AdminProfileComponent },
+      { path: 'pending-approvals', component: PendingApprovalsComponent },
       { path: 'logs-audit', redirectTo: 'audit-logs' },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

@@ -8,14 +8,7 @@
         <span>🔍</span>
         <input type="text" [(ngModel)]="searchQuery" placeholder="Search folders or documents...">
       </div>
-      
-      <div class="header-profile">
-        <div class="profile-avatar">👤</div>
-        <div class="profile-info">
-          <span class="profile-name">{{ auth.currentUser()?.name || 'Admin' }}</span>
-          <span class="profile-role">(Admin)</span>
-        </div>
-      </div>
+      <app-admin-header></app-admin-header>
     </header>
 
     <div class="content-body">
@@ -32,32 +25,78 @@
             <button class="btn-primary" (click)="openCreateRootFolderModal()">+ New Folder</button>
           </div>
           <div class="folder-tree">
-            <div *ngFor="let folder of folderTree" class="folder-node">
-              <div class="folder-item" 
-                   [class.selected]="selectedFolder?.folder_id === folder.folder_id"
-                   (click)="selectFolder(folder)">
-                <span class="folder-icon">{{ getFolderIcon(folder) }}</span>
-                <span class="folder-name">{{ folder.folder_name }}</span>
-                <span class="folder-badge">{{ getPermissionIcon(folder.permissions) }}</span>
-                <div class="folder-actions">
-                  <button class="icon-btn" (click)="openCreateSubfolderModal(folder); $event.stopPropagation()" title="Add Subfolder">➕</button>
-                  <button class="icon-btn delete-btn" (click)="deleteFolder(folder, $event)" title="Delete">🗑️</button>
-                </div>
-              </div>
-              <div class="subfolders" *ngIf="folder.subfolders.length > 0">
-                <div *ngFor="let sub of folder.subfolders" class="subfolder-item"
-                     [class.selected]="selectedFolder?.folder_id === sub.folder_id"
-                     (click)="selectFolder(sub)">
-                  <span class="folder-icon">{{ getFolderIcon(sub) }}</span>
-                  <span class="folder-name">{{ sub.folder_name }}</span>
-                  <span class="folder-badge">{{ getPermissionIcon(sub.permissions) }}</span>
+            <!-- Expand/Collapse All Controls -->
+            <div class="folder-controls">
+              <button class="control-btn" (click)="expandAll()" title="Expand All Folders">
+                <span class="control-icon">➕</span> Expand All
+              </button>
+              <button class="control-btn" (click)="collapseAll()" title="Collapse All Folders">
+                <span class="control-icon">➖</span> Collapse All
+              </button>
+            </div>
+
+            <!-- Render Folder Tree -->
+            <ng-container *ngFor="let folder of folderTree">
+              <div class="folder-item-wrapper">
+                <div class="folder-item" 
+                    [class.selected]="selectedFolder?.folder_id === folder.folder_id"
+                    (click)="selectFolder(folder)">
+                  <!-- Expand/Collapse Toggle Button -->
+                  <button class="toggle-btn" 
+                          *ngIf="folder.subfolders.length > 0"
+                          (click)="toggleFolder(folder, $event)">
+                    <span class="toggle-icon">{{ folder.isExpanded ? '▼' : '▶' }}</span>
+                  </button>
+                  <div class="toggle-placeholder" *ngIf="folder.subfolders.length === 0"></div>
+                  
+                  <span class="folder-name">{{ folder.folder_name }}</span>
+                  <span class="folder-badge">{{ getPermissionIcon(folder.permissions) }}</span>
                   <div class="folder-actions">
-                    <button class="icon-btn" (click)="openCreateSubfolderModal(sub); $event.stopPropagation()" title="Add Subfolder">➕</button>
-                    <button class="icon-btn delete-btn" (click)="deleteFolder(sub, $event)" title="Delete">🗑️</button>
+                    <button class="icon-btn" (click)="openCreateSubfolderModal(folder); $event.stopPropagation()" title="Add Subfolder">➕</button>
+                    <button class="icon-btn delete-btn" (click)="deleteFolder(folder, $event)" title="Delete">🗑️</button>
+                  </div>
+                </div>
+                
+                <!-- Subfolders (Collapsible) -->
+                <div class="subfolders" *ngIf="folder.isExpanded && folder.subfolders.length > 0">
+                  <div *ngFor="let sub of folder.subfolders" class="subfolder-item-wrapper">
+                    <div class="subfolder-item" 
+                        [class.selected]="selectedFolder?.folder_id === sub.folder_id"
+                        (click)="selectFolder(sub)">
+                      <button class="toggle-btn" 
+                              *ngIf="sub.subfolders.length > 0"
+                              (click)="toggleFolder(sub, $event)">
+                        <span class="toggle-icon">{{ sub.isExpanded ? '▼' : '▶' }}</span>
+                      </button>
+                      <div class="toggle-placeholder" *ngIf="sub.subfolders.length === 0"></div>
+                      
+                      <span class="folder-name">{{ sub.folder_name }}</span>
+                      <span class="folder-badge">{{ getPermissionIcon(sub.permissions) }}</span>
+                      <div class="folder-actions">
+                        <button class="icon-btn" (click)="openCreateSubfolderModal(sub); $event.stopPropagation()" title="Add Subfolder">➕</button>
+                        <button class="icon-btn delete-btn" (click)="deleteFolder(sub, $event)" title="Delete">🗑️</button>
+                      </div>
+                    </div>
+                    
+                    <!-- Third level subfolders -->
+                    <div class="subfolders level-3" *ngIf="sub.isExpanded && sub.subfolders.length > 0">
+                      <div *ngFor="let sub2 of sub.subfolders" class="subfolder-item level-3-item"
+                          [class.selected]="selectedFolder?.folder_id === sub2.folder_id"
+                          (click)="selectFolder(sub2)">
+                        <div class="toggle-placeholder"></div>
+                        <span class="folder-name">{{ sub2.folder_name }}</span>
+                        <span class="folder-badge">{{ getPermissionIcon(sub2.permissions) }}</span>
+                        <div class="folder-actions">
+                          <button class="icon-btn" (click)="openCreateSubfolderModal(sub2); $event.stopPropagation()" title="Add Subfolder">➕</button>
+                          <button class="icon-btn delete-btn" (click)="deleteFolder(sub2, $event)" title="Delete">🗑️</button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </ng-container>
+            
             <div *ngIf="folderTree.length === 0" class="empty-folder-tree">
               No folders yet. Click "New Folder" to create one.
             </div>
@@ -67,13 +106,21 @@
         <!-- Right Panel: Selected Folder Details -->
         <div class="folder-details-panel" *ngIf="selectedFolder">
           <div class="panel-header">
-            <h2>{{ getFolderIcon(selectedFolder) }} {{ selectedFolder.folder_name }}</h2>
+            <h2> 📂 {{ selectedFolder.folder_name }}</h2>
             <button class="btn-upload" (click)="openUploadModal()">+ Upload Document</button>
+          </div>
+
+          <!-- Breadcrumb -->
+          <div class="breadcrumb-trail">
+            <span *ngFor="let crumb of getFolderPath(); let i = index; let last = last">
+              <span *ngIf="i > 0"> / </span>
+              <span [class.breadcrumb-current]="last" [class.breadcrumb-link]="!last">{{ crumb.folder_name }}</span>
+            </span>
           </div>
 
           <!-- Folder Settings -->
           <div class="folder-settings">
-            <h3>⚙️ Folder Settings</h3>
+            <h3> Folder Settings</h3>
             <div class="settings-row">
               <div class="settings-field">
                 <label>Folder Name</label>
@@ -93,13 +140,12 @@
 
           <!-- Subfolders Section -->
           <div class="subfolders-section" *ngIf="getCurrentSubfolders().length > 0">
-            <h3>📂 Subfolders</h3>
+            <h3> Subfolders</h3>
             <div class="subfolder-list">
-              <div *ngFor="let sub of getCurrentSubfolders()" class="subfolder-card">
-                <span class="subfolder-icon">📁</span>
+              <div *ngFor="let sub of getCurrentSubfolders()" class="subfolder-card" (click)="selectFolder(sub)">
                 <span class="subfolder-name">{{ sub.folder_name }}</span>
                 <span class="subfolder-badge">{{ getPermissionIcon(sub.permissions) }}</span>
-                <button class="icon-btn small" (click)="selectFolder(sub)" title="Open">📂</button>
+                <button class="icon-btn small" (click)="openCreateSubfolderModal(sub); $event.stopPropagation()" title="Add Subfolder">➕</button>
                 <button class="icon-btn small delete-btn" (click)="deleteFolder(sub, $event)" title="Delete">🗑️</button>
               </div>
             </div>
@@ -107,7 +153,7 @@
 
           <!-- Documents Section -->
           <div class="documents-section">
-            <h3>📄 Documents</h3>
+            <h3> Documents</h3>
             <div *ngIf="getCurrentDocuments().length === 0" class="empty-docs">
               No documents in this folder. Click "Upload Document" to add one.
             </div>
@@ -133,7 +179,7 @@
 
         <!-- No Folder Selected -->
         <div class="no-folder-selected" *ngIf="!selectedFolder && folderTree.length > 0">
-          <span>📁</span>
+          <span></span>
           <p>Select a folder from the left panel to manage its contents.</p>
         </div>
 
@@ -163,11 +209,10 @@
         </select>
       </div>
       <div *ngIf="isSubfolderMode" class="info-note">
-        <span>📌</span> This folder will be created inside "{{ selectedFolder?.folder_name }}"
+        <span>📌</span> This folder will be created inside "{{ parentFolderName }}"
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" (click)="showFolderModal = false">Cancel</button>
+    <div class="modal-footer-center">
       <button class="btn-save" (click)="createFolder()">Create Folder</button>
     </div>
   </div>
@@ -185,7 +230,7 @@
         <input type="file" #fileInput (change)="onFileSelected($event)" style="display: none">
         <div class="upload-icon">📄</div>
         <div class="upload-text" *ngIf="!selectedFile">Click to select a file from your computer</div>
-        <div class="upload-text" *ngIf="selectedFile">✓ Selected: {{ selectedFile.name }}</div>
+        <div class="upload-text selected" *ngIf="selectedFile">✓ Selected: {{ selectedFile.name }}</div>
         <div class="upload-hint" *ngIf="!selectedFile">PDF, DOC, DOCX, TXT, XLS, XLSX (Max 10MB)</div>
       </div>
       
@@ -223,8 +268,7 @@
         <span>ℹ️</span> Uploading to folder: <strong>{{ selectedFolder?.folder_name }}</strong>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" (click)="showDocModal = false">Cancel</button>
+    <div class="modal-footer-center">
       <button class="btn-save" (click)="uploadDocument()" [disabled]="!selectedFile">Upload Document</button>
     </div>
   </div>

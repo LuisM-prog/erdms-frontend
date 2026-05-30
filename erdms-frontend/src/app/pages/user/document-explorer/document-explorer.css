@@ -834,3 +834,187 @@
   gap: 6px;
   white-space: nowrap;
 }
+
+/* Folder Panel */
+.folder-panel {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.panel-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.panel-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+/* Folder Controls */
+.folder-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.control-icon {
+  font-size: 10px;
+}
+
+/* Folder Tree */
+.folder-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  max-height: calc(100vh - 300px);
+}
+
+.folder-item-wrapper {
+  margin-bottom: 2px;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.folder-item:hover {
+  background: #f1f5f9;
+}
+
+.folder-item.selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+/* Toggle Button */
+.toggle-btn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  background: #e2e8f0;
+}
+
+.toggle-placeholder {
+  width: 20px;
+}
+
+.toggle-icon {
+  font-size: 10px;
+}
+
+.folder-icon {
+  font-size: 16px;
+}
+
+.folder-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.folder-badge {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* Subfolders Container */
+.subfolders {
+  margin-left: 28px;
+  margin-top: 2px;
+  padding-left: 8px;
+  border-left: 2px solid #e2e8f0;
+}
+
+.subfolders.level-3 {
+  margin-left: 20px;
+}
+
+.subfolder-item-wrapper {
+  margin-bottom: 2px;
+}
+
+.subfolder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 2px;
+}
+
+.subfolder-item:hover {
+  background: #f1f5f9;
+}
+
+.subfolder-item.selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.subfolder-item.level-3-item {
+  margin-left: 20px;
+}
+
+.empty-folder-tree {
+  text-align: center;
+  padding: 40px;
+  color: #94a3b8;
+  font-size: 13px;
+}

@@ -209,6 +209,7 @@ export const getDocumentsByFolder = (req, res) => {
 // GET single document by ID
 export const getDocumentById = (req, res) => {
     const { id } = req.params;
+    const userId = req.user.user_id;
     
     const query = `
         SELECT d.*, f.folder_name, f.permissions as folder_permissions, u.name as uploaded_by_name 
@@ -225,6 +226,14 @@ export const getDocumentById = (req, res) => {
         if (results.length === 0) {
             return res.status(404).json({ message: 'Document not found' });
         }
+        
+        // Log the view action
+        db.query(
+            'INSERT INTO Logs (user_id, action, document_id, details) VALUES (?, "view", ?, ?)',
+            [userId, id, `Viewed document "${results[0].title}"`],
+            (logErr) => { if (logErr) console.error('Failed to log view:', logErr.message); }
+        );
+        
         res.json(results[0]);
     });
 };

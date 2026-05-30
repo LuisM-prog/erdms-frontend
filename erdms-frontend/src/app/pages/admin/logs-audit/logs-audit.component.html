@@ -8,14 +8,7 @@
         <h1>Logs & Audit Trail</h1>
         <p class="header-subtitle">Complete system activity history with detailed audit trails</p>
       </div>
-      
-      <div class="header-profile">
-        <div class="profile-avatar">👤</div>
-        <div class="profile-info">
-          <span class="profile-name">{{ auth.currentUser()?.name || 'Admin' }}</span>
-          <span class="profile-role">Administrator</span>
-        </div>
-      </div>
+      <app-admin-header></app-admin-header>
     </header>
 
     <div class="content-body">
@@ -102,7 +95,7 @@
           <tbody>
             <tr *ngFor="let log of paginatedLogs">
               <td class="timestamp-cell">
-                📅 {{ formatTimestamp(log.timestamp) }}
+                {{ formatTimestamp(log.timestamp) }}
               </td>
               <td class="uid-cell">
                 #{{ log.user_id }}

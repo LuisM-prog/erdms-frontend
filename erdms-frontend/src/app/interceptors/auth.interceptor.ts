@@ -1,7 +1,10 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { SessionService } from '../services/session.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const token = localStorage.getItem('access_token');
+  const session = inject(SessionService);
+  const token = session.getToken();
   
   if (token) {
     const cloned = req.clone({

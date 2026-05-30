@@ -4,40 +4,30 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
-  selector: 'app-sidebar',
+  selector: 'app-user-sidebar',
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <aside class="sidebar">
+    <aside class="user-sidebar">
       <div class="sidebar-brand">
-        <div class="brand-logo">🛡️</div>
+        <div class="brand-logo"></div>
         <div class="brand-text">
           <h3>ERDMS</h3>
-          <small>Admin Portal</small>
+          <small>Document Portal</small>
         </div>
       </div>
       
-      <nav class="sidebar-menu">
-        <a routerLink="/admin/dashboard" routerLinkActive="active" class="menu-item">
-          <span class="icon">🏠</span> Dashboard
+        <nav class="sidebar-menu">
+        <a routerLink="/user/dashboard" routerLinkActive="active" class="menu-item">
+          <span class="icon">📊</span> Dashboard
         </a>
-        <a routerLink="/admin/folder-management" routerLinkActive="active" class="menu-item">
-          <span class="icon">📄</span> Document Management
+        <a routerLink="/user/document-management" routerLinkActive="active" class="menu-item">
+          <span class="icon">📁</span> Documents
         </a>
-        <a routerLink="/admin/user-management" routerLinkActive="active" class="menu-item">
-          <span class="icon">👤</span> User Management
+        <a routerLink="/user/user-profile" routerLinkActive="active" class="menu-item">
+          <span class="icon">👤</span> Profile
         </a>
-        <a routerLink="/admin/audit-logs" routerLinkActive="active" class="menu-item">
-          <span class="icon">🛡️</span> Logs & Audit Trail
-        </a>
-        <!-- Only show Pending Approvals to Super Admin  -->
-        <a *ngIf="isSuperAdmin()" routerLink="/admin/pending-approvals" routerLinkActive="active" class="menu-item">
-          <span class="icon">⏳</span> Pending Approvals
-        </a>
-        <a routerLink="/admin/profile" routerLinkActive="active" class="menu-item">
-          <span class="icon">⚙️</span> Account Settings
-        </a>
-      </nav>
+        </nav>
 
       <div class="sidebar-footer">
         <button class="signout-btn" (click)="logout()">
@@ -47,7 +37,7 @@ import { AuthService } from '../../services/auth.service';
     </aside>
   `,
   styles: [`
-    .sidebar {
+    .user-sidebar {
       width: 260px;
       min-width: 260px;
       background-color: #0b1329;
@@ -149,15 +139,15 @@ import { AuthService } from '../../services/auth.service';
       background-color: #7f1d1d;
       color: #fca5a5;
     }
+
+    .signout-btn .icon {
+      font-size: 16px;
+    }
   `]
 })
-export class SidebarComponent {
+export class UserSidebarComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
-
-  isSuperAdmin(): boolean {
-    return this.auth.currentUser()?.user_id === 3;
-  }
 
   logout() {
     if (confirm('Are you sure you want to sign out?')) {

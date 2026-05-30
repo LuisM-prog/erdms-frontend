@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
 import { AuthService } from '../../../services/auth.service';
 import { SidebarComponent } from '../../../components/sidebar/sidebar.component';
+import { AdminHeaderComponent } from '../../../components/admin-header/admin-header.component';
 
 interface FolderNode {
   folder_id: number;
@@ -13,15 +14,16 @@ interface FolderNode {
   created_by_name?: string;
   created_at: string;
   permissions: 'public' | 'private' | 'restricted';
-  parent_id: number | null;
+  parent_folder_id: number | null;
   subfolders: FolderNode[];
   documents: any[];
+  isExpanded: boolean;  // Add this for collapse/expand
 }
 
 @Component({
   selector: 'app-folder-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, SidebarComponent, AdminHeaderComponent],
   templateUrl: './folder-management.html',
   styleUrls: ['./folder-management.css']
 })
@@ -37,6 +39,7 @@ export class FolderManagementComponent implements OnInit {
   showDocModal = false;
   isSubfolderMode = false;
   parentFolderId: number | null = null;
+  parentFolderName: string = '';
   isLoading = false;
   errorMessage = '';
   
@@ -75,7 +78,6 @@ export class FolderManagementComponent implements OnInit {
       this.documents = docs;
       this.buildFolderTree();
       
-      // Auto-select root folder
       if (this.folderTree.length > 0 && !this.selectedFolder) {
         this.selectedFolder = this.folderTree[0];
       }
@@ -91,7 +93,7 @@ export class FolderManagementComponent implements OnInit {
     const roots: FolderNode[] = [];
 
     // First, create all folder nodes
-    this.folders.forEach(folder => {
+    this.folders.forEach((folder: any) => {
       folderMap.set(folder.folder_id, {
         folder_id: folder.folder_id,
         folder_name: folder.folder_name,
@@ -99,30 +101,37 @@ export class FolderManagementComponent implements OnInit {
         created_by_name: folder.created_by_name,
         created_at: folder.created_at,
         permissions: folder.permissions,
-        parent_id: null,
+        parent_folder_id: folder.parent_folder_id || null,
         subfolders: [],
-        documents: []
+        documents: [],
+        isExpanded: false  // Start collapsed
       });
     });
 
-    // Build hierarchy
-    this.folders.forEach(folder => {
+    // Build hierarchy - link children to parents using parent_folder_id
+    this.folders.forEach((folder: any) => {
       const node = folderMap.get(folder.folder_id);
       if (node) {
-        if (folder.parent_id && folderMap.has(folder.parent_id)) {
-          const parent = folderMap.get(folder.parent_id);
+        if (folder.parent_folder_id && folderMap.has(folder.parent_folder_id)) {
+          const parent = folderMap.get(folder.parent_folder_id);
           if (parent) {
-            node.parent_id = folder.parent_id;
             parent.subfolders.push(node);
           }
-        } else {
+        } else if (!folder.parent_folder_id) {
           roots.push(node);
         }
       }
     });
 
+    // Sort subfolders alphabetically
+    const sortSubfolders = (nodes: FolderNode[]) => {
+      nodes.sort((a, b) => a.folder_name.localeCompare(b.folder_name));
+      nodes.forEach(node => sortSubfolders(node.subfolders));
+    };
+    sortSubfolders(roots);
+
     // Add documents to folders
-    this.documents.forEach(doc => {
+    this.documents.forEach((doc: any) => {
       const folderNode = folderMap.get(doc.folder_id);
       if (folderNode) {
         folderNode.documents.push(doc);
@@ -130,6 +139,38 @@ export class FolderManagementComponent implements OnInit {
     });
 
     this.folderTree = roots;
+  }
+
+  // Toggle folder expansion
+  toggleFolder(folder: FolderNode, event: Event) {
+    event.stopPropagation();
+    folder.isExpanded = !folder.isExpanded;
+  }
+
+  // Expand all folders
+  expandAll() {
+    const expandAllFolders = (nodes: FolderNode[]) => {
+      nodes.forEach(node => {
+        node.isExpanded = true;
+        if (node.subfolders.length > 0) {
+          expandAllFolders(node.subfolders);
+        }
+      });
+    };
+    expandAllFolders(this.folderTree);
+  }
+
+  // Collapse all folders
+  collapseAll() {
+    const collapseAllFolders = (nodes: FolderNode[]) => {
+      nodes.forEach(node => {
+        node.isExpanded = false;
+        if (node.subfolders.length > 0) {
+          collapseAllFolders(node.subfolders);
+        }
+      });
+    };
+    collapseAllFolders(this.folderTree);
   }
 
   selectFolder(folder: FolderNode) {
@@ -167,9 +208,28 @@ export class FolderManagementComponent implements OnInit {
     return subfolders;
   }
 
+  getFolderPath(): FolderNode[] {
+    const path: FolderNode[] = [];
+    const findPath = (nodes: FolderNode[], target: FolderNode, currentPath: FolderNode[]): boolean => {
+      for (const node of nodes) {
+        currentPath.push(node);
+        if (node.folder_id === target.folder_id) return true;
+        if (findPath(node.subfolders, target, currentPath)) return true;
+        currentPath.pop();
+      }
+      return false;
+    };
+    
+    if (this.selectedFolder) {
+      findPath(this.folderTree, this.selectedFolder, path);
+    }
+    return path;
+  }
+
   openCreateRootFolderModal() {
     this.isSubfolderMode = false;
     this.parentFolderId = null;
+    this.parentFolderName = '';
     this.inputFolderName = '';
     this.inputFolderPermission = 'public';
     this.showFolderModal = true;
@@ -178,6 +238,7 @@ export class FolderManagementComponent implements OnInit {
   openCreateSubfolderModal(parentFolder: FolderNode) {
     this.isSubfolderMode = true;
     this.parentFolderId = parentFolder.folder_id;
+    this.parentFolderName = parentFolder.folder_name;
     this.inputFolderName = '';
     this.inputFolderPermission = parentFolder.permissions;
     this.showFolderModal = true;
@@ -190,10 +251,17 @@ export class FolderManagementComponent implements OnInit {
     }
     
     this.isLoading = true;
-    const result = await this.state.createFolder(
-      this.inputFolderName.trim(),
-      this.inputFolderPermission as 'public' | 'private' | 'restricted'
-    );
+    
+    const folderData: any = {
+      folder_name: this.inputFolderName.trim(),
+      permissions: this.inputFolderPermission as 'public' | 'private' | 'restricted'
+    };
+    
+    if (this.isSubfolderMode && this.parentFolderId) {
+      folderData.parent_folder_id = this.parentFolderId;
+    }
+    
+    const result = await this.state.createFolderWithParent(folderData);
     
     if (result) {
       alert(`Folder "${this.inputFolderName}" created successfully!`);
@@ -229,14 +297,14 @@ export class FolderManagementComponent implements OnInit {
 
   async deleteFolder(folder: FolderNode, event: Event) {
     event.stopPropagation();
-    const docCount = folder.documents.length + folder.subfolders.length;
-    if (confirm(`Delete "${folder.folder_name}" and all ${docCount} items inside?`)) {
+    const itemCount = folder.documents.length + folder.subfolders.length;
+    if (confirm(`Delete "${folder.folder_name}" and all ${itemCount} items inside? This cannot be undone.`)) {
       this.isLoading = true;
       const success = await this.state.deleteFolder(folder.folder_id);
       if (success) {
         alert(`Folder "${folder.folder_name}" deleted.`);
         if (this.selectedFolder?.folder_id === folder.folder_id) {
-          this.selectedFolder = this.folderTree[0];
+          this.selectedFolder = this.folderTree[0] || null;
         }
         await this.loadData();
       } else {
@@ -329,21 +397,8 @@ export class FolderManagementComponent implements OnInit {
       case 'public': return '🌍';
       case 'private': return '🔒';
       case 'restricted': return '⚠️';
-      default: return '📁';
+      default: return ' ';
     }
-  }
-
-  getPermissionLabel(permission: string): string {
-    switch (permission) {
-      case 'public': return 'Public';
-      case 'private': return 'Private';
-      case 'restricted': return 'Restricted';
-      default: return permission;
-    }
-  }
-
-  getFolderIcon(folder: FolderNode): string {
-    return folder.subfolders.length > 0 ? '📂' : '📁';
   }
 
   // Navigation
@@ -351,4 +406,10 @@ export class FolderManagementComponent implements OnInit {
   navToDocManagement() { this.router.navigate(['/admin/folder-management']); }
   navToUserManagement() { this.router.navigate(['/admin/user-management']); }
   navToAuditLogs() { this.router.navigate(['/admin/audit-logs']); }
+
+  executeSignOut() {
+    if (confirm('Are you sure you want to sign out?')) {
+      this.auth.logout();
+    }
+  }
 }

@@ -5,11 +5,12 @@ import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
 import { AuthService } from '../../../services/auth.service';
 import { SidebarComponent } from '../../../components/sidebar/sidebar.component';
+import { AdminHeaderComponent } from '../../../components/admin-header/admin-header.component';
 
 @Component({
   selector: 'app-logs-audit',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent], 
+  imports: [CommonModule, FormsModule, SidebarComponent, AdminHeaderComponent], 
   templateUrl: './logs-audit.component.html',
   styleUrl: './logs-audit.component.css'
 })
@@ -171,9 +172,15 @@ export class LogsAuditComponent implements OnInit {
       'edit_user': 'EDIT USER',
       'delete_user': 'DELETE USER',
       'toggle_user_status': 'TOGGLE STATUS',
+      'super_admin_status_change': 'SUPER ADMIN ACTION',
+      'request_status_change': 'REQUEST STATUS CHANGE',
+      'approve_status_change': 'APPROVE REQUEST',
+      'reject_status_change': 'REJECT REQUEST',
       'create_folder': 'CREATE FOLDER',
       'edit_folder': 'EDIT FOLDER',
-      'delete_folder': 'DELETE FOLDER'
+      'delete_folder': 'DELETE FOLDER',
+      'edit_profile': 'EDIT PROFILE',
+      'change_password': 'CHANGE PASSWORD'
     };
     return actionMap[action] || action.toUpperCase().replace(/_/g, ' ');
   }
@@ -187,7 +194,12 @@ export class LogsAuditComponent implements OnInit {
       'delete': '🗑️', 'edit': '✏️',
       'create_user': '👤+', 'edit_user': '👤✏️', 'delete_user': '👤🗑️',
       'toggle_user_status': '👤⚡',
-      'create_folder': '📁+', 'edit_folder': '📁✏️', 'delete_folder': '📁🗑️'
+      'super_admin_status_change': '👑⚡',
+      'request_status_change': '📨⏳',
+      'approve_status_change': '✅📋',
+      'reject_status_change': '❌📋',
+      'create_folder': '📁+', 'edit_folder': '📁✏️', 'delete_folder': '📁🗑️',
+      'edit_profile': '👤📝', 'change_password': '🔑'
     };
     return iconMap[action] || '📋';
   }
@@ -197,11 +209,13 @@ export class LogsAuditComponent implements OnInit {
     const transferActions = ['upload', 'download'];
     const userActions = ['create_user', 'edit_user', 'delete_user', 'toggle_user_status'];
     const folderActions = ['create_folder', 'edit_folder', 'delete_folder'];
+    const requestActions = ['request_status_change', 'approve_status_change', 'reject_status_change', 'super_admin_status_change'];
     
     if (loginActions.includes(action)) return 'badge-login';
     if (transferActions.includes(action)) return 'badge-transfer';
     if (userActions.includes(action)) return 'badge-user';
     if (folderActions.includes(action)) return 'badge-folder';
+    if (requestActions.includes(action)) return 'badge-request';
     return 'badge-access';
   }
 

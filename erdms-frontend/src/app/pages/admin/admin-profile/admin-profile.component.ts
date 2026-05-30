@@ -2,22 +2,21 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { UserSidebarComponent } from '../../../components/user-sidebar/user-sidebar.component';
 import { StateService } from '../../../services/state';
 import { AuthService } from '../../../services/auth.service';
+import { SidebarComponent } from '../../../components/sidebar/sidebar.component';
 
 @Component({
-  selector: 'app-user-profile',
+  selector: 'app-admin-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, UserSidebarComponent],
-  templateUrl: './user-profile.html',
-  styleUrl: './user-profile.css'
+  imports: [CommonModule, FormsModule, SidebarComponent],
+  templateUrl: './admin-profile.component.html',
+  styleUrls: ['./admin-profile.component.css']
 })
-export class UserProfileComponent implements OnInit {
-  // User Data
+export class AdminProfileComponent implements OnInit {
   loggedInUser: any = null;
-  userPosition: string = 'Employee';
-  profilePicture: string = '';
+  adminRole: string = 'Administrator';
+  profilePicture: string | null = null;
   profilePictureFile: File | null = null;
   profilePicturePreview: string | null = null;
   
@@ -59,7 +58,6 @@ export class UserProfileComponent implements OnInit {
       if (this.loggedInUser) {
         this.editedName = this.loggedInUser.name;
         this.editedEmail = this.loggedInUser.email;
-        this.userPosition = this.loggedInUser.role_name === 'admin' ? 'Administrator' : 'Employee';
       }
     } catch (error) {
       this.errorMessage = 'Failed to load profile';
@@ -70,27 +68,24 @@ export class UserProfileComponent implements OnInit {
   }
 
   loadProfilePicture() {
-    const savedPicture = localStorage.getItem(`profile_pic_${this.auth.currentUser()?.user_id}`);
-    if (savedPicture) {
-      this.profilePicture = savedPicture;
-      this.profilePicturePreview = savedPicture;
-    } else {
-      // Generate initial avatar
-      const initial = this.loggedInUser?.name?.charAt(0).toUpperCase() || 'U';
-      this.profilePicture = initial;
+    const userId = this.auth.currentUser()?.user_id;
+    if (userId) {
+      const savedPicture = localStorage.getItem(`profile_pic_${userId}`);
+      if (savedPicture && savedPicture.startsWith('data:image')) {
+        this.profilePicture = savedPicture;
+        this.profilePicturePreview = savedPicture;
+      }
     }
   }
 
   onFileSelected(event: any) {
     const file = event.target.files[0];
     if (file) {
-      // Check file size (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
         this.errorMessage = 'Profile picture must be less than 2MB';
         return;
       }
       
-      // Check file type
       if (!file.type.startsWith('image/')) {
         this.errorMessage = 'Please select an image file (JPEG, PNG, GIF)';
         return;
@@ -98,7 +93,6 @@ export class UserProfileComponent implements OnInit {
       
       this.profilePictureFile = file;
       
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.profilePicturePreview = e.target.result;
@@ -115,20 +109,21 @@ export class UserProfileComponent implements OnInit {
     this.successMessage = '';
     
     try {
-      // Convert to base64 and save to localStorage
       const reader = new FileReader();
       reader.onload = (e: any) => {
         const base64 = e.target.result;
         const userId = this.auth.currentUser()?.user_id;
-        localStorage.setItem(`profile_pic_${userId}`, base64);
-        this.profilePicture = base64;
-        this.profilePicturePreview = base64;
-        this.successMessage = 'Profile picture updated successfully!';
-        this.profilePictureFile = null;
-        
-        setTimeout(() => {
-          this.successMessage = '';
-        }, 3000);
+        if (userId) {
+          localStorage.setItem(`profile_pic_${userId}`, base64);
+          this.profilePicture = base64;
+          this.profilePicturePreview = base64;
+          this.successMessage = 'Profile picture updated successfully!';
+          this.profilePictureFile = null;
+          
+          setTimeout(() => {
+            this.successMessage = '';
+          }, 3000);
+        }
       };
       reader.readAsDataURL(this.profilePictureFile);
     } catch (error) {
@@ -140,9 +135,10 @@ export class UserProfileComponent implements OnInit {
 
   removeProfilePicture() {
     const userId = this.auth.currentUser()?.user_id;
-    localStorage.removeItem(`profile_pic_${userId}`);
-    const initial = this.loggedInUser?.name?.charAt(0).toUpperCase() || 'U';
-    this.profilePicture = initial;
+    if (userId) {
+      localStorage.removeItem(`profile_pic_${userId}`);
+    }
+    this.profilePicture = null;
     this.profilePicturePreview = null;
     this.profilePictureFile = null;
     this.successMessage = 'Profile picture removed';
@@ -250,20 +246,39 @@ export class UserProfileComponent implements OnInit {
   }
 
   getProfileBgColor(): string {
-    return this.getRandomColor(this.loggedInUser?.name || 'User');
+    return this.getRandomColor(this.loggedInUser?.name || 'Admin');
   }
 
+  getProfilePicture(): string | null {
+    return this.profilePicture;
+  }
 
-  navigateToDocuments() {
-    this.router.navigate(['/user/document-management']);
+  getInitial(): string {
+    return this.loggedInUser?.name?.charAt(0).toUpperCase() || 'A';
   }
 
   navigateToDashboard() {
-  this.router.navigate(['/user/dashboard']);
-}
+    this.router.navigate(['/admin/dashboard']);
+  }
+
+  navigateToUserManagement() {
+    this.router.navigate(['/admin/user-management']);
+  }
+
+  navigateToFolderManagement() {
+    this.router.navigate(['/admin/folder-management']);
+  }
+
+  navigateToAuditLogs() {
+    this.router.navigate(['/admin/audit-logs']);
+  }
+
+  navigateToAdminProfile() {
+    this.router.navigate(['/admin/profile']);
+  }
 
   executeSignOut() {
-    if (confirm('Are you sure you want to log out?')) {
+    if (confirm('Are you sure you want to sign out?')) {
       this.auth.logout();
     }
   }

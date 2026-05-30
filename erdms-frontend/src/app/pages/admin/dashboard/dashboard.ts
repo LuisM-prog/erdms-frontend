@@ -5,11 +5,12 @@ import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
 import { AuthService } from '../../../services/auth.service';
 import { SidebarComponent } from '../../../components/sidebar/sidebar.component';
+import { AdminHeaderComponent } from '../../../components/admin-header/admin-header.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, SidebarComponent, AdminHeaderComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })

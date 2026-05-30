@@ -1,14 +1,11 @@
-<div class="profile-container">
+<div class="admin-profile-container">
   
-  <!-- Sidebar -->
-  <app-user-sidebar></app-user-sidebar>
+  <app-sidebar></app-sidebar>
 
-
-  <!-- Main Content -->
   <main class="main-content">
     <header class="main-header">
       <div class="header-title">
-        <h1>My Profile</h1>
+        <h1>Account Settings</h1>
         <p>Manage your personal information and security settings</p>
       </div>
     </header>
@@ -23,29 +20,28 @@
 
       <!-- Messages -->
       <div *ngIf="successMessage" class="success-message">
-        ✅ {{ successMessage }}
+        ✓ {{ successMessage }}
       </div>
       <div *ngIf="errorMessage" class="error-message">
-        ⚠️ {{ errorMessage }}
+        ⚠ {{ errorMessage }}
       </div>
 
       <!-- Profile Content -->
       <div *ngIf="!isLoading && loggedInUser" class="profile-card">
         
-        <!-- Profile Picture Section - Centered at Top -->
+        <!-- Profile Picture Section -->
         <div class="profile-picture-section">
           <div class="avatar-container">
             <div class="avatar-large" [style.backgroundColor]="getProfileBgColor()">
-              <img *ngIf="profilePicturePreview && profilePicturePreview.startsWith('data:image')" 
-                   [src]="profilePicturePreview" 
+              <img *ngIf="getProfilePicture()" 
+                   [src]="getProfilePicture()" 
                    alt="Profile Picture"
                    class="avatar-img">
-              <span *ngIf="!profilePicturePreview || !profilePicturePreview.startsWith('data:image')" class="avatar-initial">
-                {{ profilePicture || loggedInUser?.name?.charAt(0).toUpperCase() || 'U' }}
+              <span *ngIf="!getProfilePicture()" class="avatar-initial">
+                {{ getInitial() }}
               </span>
             </div>
             
-            <!-- Upload Button Overlay -->
             <div class="upload-overlay">
               <label for="profile-upload" class="upload-btn">
                 📷
@@ -54,38 +50,37 @@
             </div>
           </div>
           
-          <!-- Upload Actions -->
           <div class="upload-actions" *ngIf="profilePictureFile">
             <span class="file-name">{{ profilePictureFile.name }}</span>
             <button class="confirm-upload" (click)="uploadProfilePicture()" [disabled]="isUploading">
-              {{ isUploading ? 'Uploading...' : '✓ Confirm' }}
+              {{ isUploading ? 'Uploading...' : 'Confirm' }}
             </button>
-            <button class="cancel-upload" (click)="profilePictureFile = null; profilePicturePreview = profilePicture || null">
-              ✗ Cancel
+            <button class="cancel-upload" (click)="profilePictureFile = null; profilePicturePreview = profilePicture">
+              Cancel
             </button>
           </div>
           
-          <div class="remove-photo" *ngIf="profilePicturePreview?.startsWith('data:image')">
-            <button class="remove-btn" (click)="removeProfilePicture()">🗑️ Remove Photo</button>
+          <div class="remove-photo" *ngIf="getProfilePicture()">
+            <button class="remove-btn" (click)="removeProfilePicture()">Remove Photo</button>
           </div>
           
           <div class="user-info">
             <h2>{{ loggedInUser.name }}</h2>
             <p class="user-email">{{ loggedInUser.email }}</p>
-            <p class="user-role-badge">{{ userPosition }}</p>
+            <p class="user-role-badge">{{ adminRole }}</p>
             <p class="member-since">Member since: {{ loggedInUser.created_at | date:'MMMM d, yyyy' }}</p>
           </div>
         </div>
 
-        <!-- Forms Section Below -->
+        <!-- Forms Section -->
         <div class="forms-section">
           
           <!-- Personal Information Card -->
           <div class="info-card">
             <div class="card-header">
-              <h3>📝 Personal Information</h3>
+              <h3>Personal Information</h3>
               <button class="edit-toggle-btn" (click)="toggleEditMode()">
-                {{ isEditing ? 'Cancel' : '✏️ Edit' }}
+                {{ isEditing ? 'Cancel' : 'Edit' }}
               </button>
             </div>
             
@@ -100,13 +95,11 @@
               </div>
               <div class="info-row">
                 <span class="info-label">Role</span>
-                <span class="info-value role-value">{{ userPosition }}</span>
+                <span class="info-value role-value">{{ adminRole }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Account Status</span>
-                <span class="info-value status-badge" [class.active]="loggedInUser.status === 'active'">
-                  {{ loggedInUser.status === 'active' ? 'Active' : 'Inactive' }}
-                </span>
+                <span class="info-value status-badge active">Active</span>
               </div>
             </div>
             
@@ -131,7 +124,7 @@
           <!-- Change Password Card -->
           <div class="info-card">
             <div class="card-header">
-              <h3>🔒 Change Password</h3>
+              <h3>Change Password</h3>
             </div>
             
             <div class="password-form">
@@ -142,10 +135,11 @@
                          [(ngModel)]="currentPassword" 
                          placeholder="Enter your current password">
                   <button type="button" class="toggle-password" (click)="showCurrentPassword = !showCurrentPassword">
-                    {{ showCurrentPassword ? '🙈' : '👁️' }}
+                    {{ showCurrentPassword ? 'Hide' : 'Show' }}
                   </button>
                 </div>
               </div>
+              
               <div class="form-group">
                 <label>New Password</label>
                 <div class="password-input-group">
@@ -153,10 +147,11 @@
                          [(ngModel)]="newPassword" 
                          placeholder="Enter new password (min. 6 characters)">
                   <button type="button" class="toggle-password" (click)="showNewPassword = !showNewPassword">
-                    {{ showNewPassword ? '🙈' : '👁️' }}
+                    {{ showNewPassword ? 'Hide' : 'Show' }}
                   </button>
                 </div>
               </div>
+              
               <div class="form-group">
                 <label>Confirm New Password</label>
                 <div class="password-input-group">
@@ -164,13 +159,15 @@
                          [(ngModel)]="confirmPassword" 
                          placeholder="Confirm your new password">
                   <button type="button" class="toggle-password" (click)="showConfirmPassword = !showConfirmPassword">
-                    {{ showConfirmPassword ? '🙈' : '👁️' }}
+                    {{ showConfirmPassword ? 'Hide' : 'Show' }}
                   </button>
                 </div>
               </div>
+              
               <div class="password-hint">
-                <span>🔐 Password must be at least 6 characters long</span>
+                Password must be at least 6 characters long
               </div>
+              
               <button class="btn-change-password" (click)="changePassword()" [disabled]="isLoading">
                 {{ isLoading ? 'Changing...' : 'Update Password' }}
               </button>

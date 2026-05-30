@@ -1,49 +1,13 @@
 <div class="wireframe-container">
   
-  <!-- Sidebar -->
-  <aside class="left-sidebar">
-    <div class="user-avatar-area">
-      <div class="logo">🛡️ ERDMS</div>
-      <div class="subtitle">Document Portal</div>
-    </div>
-    
-    <nav class="nav-links-stack">
-      <button (click)="goToDashboard()" class="nav-tab-btn">
-        <span class="btn-icon">📊</span> Dashboard
-      </button>
-      <button (click)="goToDocuments()" class="nav-tab-btn active">
-        <span class="btn-icon">📁</span> Documents
-      </button>
-      <button (click)="goToProfile()" class="nav-tab-btn">
-        <span class="btn-icon">👤</span> Profile
-      </button>
-    </nav>
-
-    <div class="sidebar-footer">
-      <button class="signout-btn-sidebar" (click)="executeSignOut()">
-        <span class="btn-icon">🚪</span> Sign Out
-      </button>
-    </div>
-  </aside>
+  <app-user-sidebar></app-user-sidebar>
 
   <!-- Main Content -->
   <main class="viewport-main">
     <header class="top-navbar-bar">
-  <div class="spacer-flex"></div>
-  <div class="header-profile">
-    <div class="profile-avatar" *ngIf="!getProfilePicture()">
-      {{ getInitial() }}
-    </div>
-    <img *ngIf="getProfilePicture()" 
-         [src]="getProfilePicture()" 
-         class="profile-avatar-img"
-         alt="Profile">
-    <div class="profile-info">
-      <span class="profile-name">{{ userInfo.name }}</span>
-      <span class="profile-role">{{ userInfo.position }}</span>
-    </div>
-  </div>
-</header>
+      <div class="spacer-flex"></div>
+      <app-user-header></app-user-header>
+    </header>
 
     <div class="main-body-workspace">
       
@@ -97,35 +61,80 @@
         <!-- Two Column Layout -->
         <div class="explorer-layout">
           
-          <!-- Left: Folder Tree -->
+          <!-- Left: Folder Tree with Collapsible Folders -->
           <div class="folder-panel">
-            <div class="panel-title">📁 Folders</div>
+            <div class="panel-header">
+              <div class="panel-title">📁 Folders</div>
+              <div class="folder-controls">
+                <button class="control-btn" (click)="expandAll()" title="Expand All Folders">
+                  <span class="control-icon">➕</span> Expand All
+                </button>
+                <button class="control-btn" (click)="collapseAll()" title="Collapse All Folders">
+                  <span class="control-icon">➖</span> Collapse All
+                </button>
+              </div>
+            </div>
             <div class="folder-tree">
-              <div *ngFor="let folder of folderTree" class="folder-node">
-                <div class="folder-item" 
-                     [class.active]="currentFolder?.folder_id === folder.folder_id"
-                     (click)="selectFolder(folder)">
-                  <span class="folder-icon">{{ getFolderIcon(folder) }}</span>
-                  <span class="folder-name">{{ folder.folder_name }}</span>
-                  <span class="folder-badge">{{ folder.permissions }}</span>
-                </div>
-                <div class="subfolder-list" *ngIf="folder.subfolders.length > 0">
-                  <div *ngFor="let sub of folder.subfolders" 
-                       class="subfolder-item"
-                       [class.active]="currentFolder?.folder_id === sub.folder_id"
-                       (click)="selectFolder(sub)">
-                    <span class="folder-icon">{{ getFolderIcon(sub) }}</span>
-                    <span class="folder-name">{{ sub.folder_name }}</span>
+              <!-- Render Folder Tree -->
+              <ng-container *ngFor="let folder of folderTree">
+                <div class="folder-item-wrapper">
+                  <div class="folder-item" 
+                       [class.selected]="currentFolder?.folder_id === folder.folder_id"
+                       (click)="selectFolder(folder)">
+                    <!-- Expand/Collapse Toggle Button -->
+                    <button class="toggle-btn" 
+                            *ngIf="folder.subfolders.length > 0"
+                            (click)="toggleFolder(folder, $event)">
+                      <span class="toggle-icon">{{ folder.isExpanded ? '▼' : '▶' }}</span>
+                    </button>
+                    <div class="toggle-placeholder" *ngIf="folder.subfolders.length === 0"></div>
+                    
+                    <span class="folder-icon">{{ getFolderIcon(folder) }}</span>
+                    <span class="folder-name">{{ folder.folder_name }}</span>
+                    <span class="folder-badge">{{ getPermissionIcon(folder.permissions) }}</span>
+                  </div>
+                  
+                  <!-- Subfolders (Collapsible) -->
+                  <div class="subfolders" *ngIf="folder.isExpanded && folder.subfolders.length > 0">
+                    <div *ngFor="let sub of folder.subfolders" class="subfolder-item-wrapper">
+                      <div class="subfolder-item" 
+                           [class.selected]="currentFolder?.folder_id === sub.folder_id"
+                           (click)="selectFolder(sub)">
+                        <button class="toggle-btn" 
+                                *ngIf="sub.subfolders.length > 0"
+                                (click)="toggleFolder(sub, $event)">
+                          <span class="toggle-icon">{{ sub.isExpanded ? '▼' : '▶' }}</span>
+                        </button>
+                        <div class="toggle-placeholder" *ngIf="sub.subfolders.length === 0"></div>
+                        
+                        <span class="folder-icon">{{ getFolderIcon(sub) }}</span>
+                        <span class="folder-name">{{ sub.folder_name }}</span>
+                        <span class="folder-badge">{{ getPermissionIcon(sub.permissions) }}</span>
+                      </div>
+                      
+                      <!-- Third level subfolders -->
+                      <div class="subfolders level-3" *ngIf="sub.isExpanded && sub.subfolders.length > 0">
+                        <div *ngFor="let sub2 of sub.subfolders" class="subfolder-item level-3-item"
+                             [class.selected]="currentFolder?.folder_id === sub2.folder_id"
+                             (click)="selectFolder(sub2)">
+                          <div class="toggle-placeholder"></div>
+                          <span class="folder-icon">{{ getFolderIcon(sub2) }}</span>
+                          <span class="folder-name">{{ sub2.folder_name }}</span>
+                          <span class="folder-badge">{{ getPermissionIcon(sub2.permissions) }}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div *ngIf="folderTree.length === 0" class="empty-folder">
+              </ng-container>
+              
+              <div *ngIf="folderTree.length === 0" class="empty-folder-tree">
                 No folders available
               </div>
             </div>
           </div>
 
-          <!-- Right: Documents -->
+          <!-- Right: Documents Panel -->
           <div class="documents-panel">
             <div class="panel-title">
               📄 Documents in {{ currentFolder?.folder_name || 'Selected Folder' }}
@@ -176,10 +185,10 @@
                   <td class="date-cell">{{ doc.created_at | date:'shortDate' }}</td>
                   <td class="action-cell">
                     <button class="preview-btn" (click)="openPreview(doc)" title="Preview">
-                      👁️ Preview
+                      Preview
                     </button>
                     <button class="download-btn" (click)="downloadDocument(doc)" title="Download">
-                      📥 Download
+                      Download
                     </button>
                   </td>
                 </tr>
@@ -205,22 +214,18 @@
         <p>Loading preview...</p>
       </div>
       <div *ngIf="!isPreviewLoading && previewUrl" class="preview-content">
-        <!-- PDF Preview -->
         <iframe *ngIf="selectedDocForPreview?.file_type?.includes('pdf')" 
                 [src]="previewUrl" 
                 class="preview-iframe"
                 frameborder="0">
         </iframe>
-        <!-- Image Preview -->
         <img *ngIf="selectedDocForPreview?.file_type?.includes('image')" 
              [src]="previewUrl" 
              class="preview-image"
              alt="Preview">
-        <!-- Text Preview -->
         <div *ngIf="selectedDocForPreview?.file_type?.includes('text')" class="preview-text">
           <embed [src]="previewUrl" width="100%" height="500px" />
         </div>
-        <!-- Other Files -->
         <div *ngIf="!selectedDocForPreview?.file_type?.includes('pdf') && 
                     !selectedDocForPreview?.file_type?.includes('image') && 
                     !selectedDocForPreview?.file_type?.includes('text')" 

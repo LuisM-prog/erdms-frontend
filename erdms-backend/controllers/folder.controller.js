@@ -20,6 +20,7 @@ export const getAllFolders = (req, res) => {
 // GET single folder by ID
 export const getFolderById = (req, res) => {
     const { id } = req.params;
+    const userId = req.user.user_id;
     
     const query = `
         SELECT f.*, u.name as created_by_name 
@@ -35,42 +36,63 @@ export const getFolderById = (req, res) => {
         if (results.length === 0) {
             return res.status(404).json({ message: 'Folder not found' });
         }
+        
+        // Log the view folder action
+        db.query(
+            'INSERT INTO Logs (user_id, action, details) VALUES (?, "view_folder", ?)',
+            [userId, `Viewed folder "${results[0].folder_name}"`],
+            (logErr) => { if (logErr) console.error('Failed to log view folder:', logErr.message); }
+        );
+        
         res.json(results[0]);
     });
 };
 
-// CREATE new folder
+// CREATE new folder (with parent_folder_id support)
 export const createFolder = (req, res) => {
-    const { folder_name, permissions } = req.body;
+    const { folder_name, permissions, parent_folder_id } = req.body;
     const created_by = req.user.user_id;
     
     if (!folder_name) {
         return res.status(400).json({ message: 'Folder name is required' });
     }
     
-    db.query('SELECT * FROM Folders WHERE folder_name = ?', [folder_name], (err, results) => {
+    // Check if folder name already exists at the same parent level
+    let checkQuery = 'SELECT * FROM Folders WHERE folder_name = ?';
+    let checkParams = [folder_name];
+    
+    if (parent_folder_id) {
+        checkQuery += ' AND parent_folder_id = ?';
+        checkParams.push(parent_folder_id);
+    } else {
+        checkQuery += ' AND parent_folder_id IS NULL';
+    }
+    
+    db.query(checkQuery, checkParams, (err, results) => {
         if (err) {
             return res.status(500).json({ message: 'Database error', error: err.message });
         }
         if (results.length > 0) {
-            return res.status(400).json({ message: 'Folder with this name already exists' });
+            return res.status(400).json({ message: 'Folder with this name already exists at this location' });
         }
         
         const folderPermissions = permissions || 'public';
+        const parentId = parent_folder_id || null;
         
         db.query(
-            'INSERT INTO Folders (folder_name, created_by, permissions) VALUES (?, ?, ?)',
-            [folder_name, created_by, folderPermissions],
+            'INSERT INTO Folders (folder_name, created_by, permissions, parent_folder_id) VALUES (?, ?, ?, ?)',
+            [folder_name, created_by, folderPermissions, parentId],
             (err, result) => {
                 if (err) {
                     return res.status(500).json({ message: 'Failed to create folder', error: err.message });
                 }
                 
-                // Log with ENUM value + details
+                // Log folder creation
+                const actionDetail = parentId ? `Created subfolder "${folder_name}" inside folder ID ${parentId}` : `Created folder "${folder_name}"`;
                 db.query(
                     'INSERT INTO Logs (user_id, action, details) VALUES (?, "create_folder", ?)',
-                    [created_by, `Created folder: "${folder_name}"`],
-                    (logErr) => { if (logErr) console.error('Log error:', logErr.message); }
+                    [created_by, actionDetail],
+                    (logErr) => { if (logErr) console.error('Failed to log:', logErr.message); }
                 );
                 
                 res.status(201).json({
@@ -78,6 +100,7 @@ export const createFolder = (req, res) => {
                     folder_id: result.insertId,
                     folder_name,
                     permissions: folderPermissions,
+                    parent_folder_id: parentId,
                     created_by: req.user.name
                 });
             }
@@ -85,18 +108,18 @@ export const createFolder = (req, res) => {
     });
 };
 
-// UPDATE folder
+// UPDATE folder (rename, change permissions, or move to different parent)
 export const updateFolder = (req, res) => {
     const { id } = req.params;
-    const { folder_name, permissions } = req.body;
+    const { folder_name, permissions, parent_folder_id } = req.body;
     const userId = req.user.user_id;
     
-    if (!folder_name && !permissions) {
+    if (!folder_name && !permissions && parent_folder_id === undefined) {
         return res.status(400).json({ message: 'Nothing to update' });
     }
     
     // Get old folder data
-    db.query('SELECT folder_name, permissions FROM Folders WHERE folder_id = ?', [id], (err, oldData) => {
+    db.query('SELECT folder_name, permissions, parent_folder_id FROM Folders WHERE folder_id = ?', [id], (err, oldData) => {
         if (err) {
             return res.status(500).json({ message: 'Database error', error: err.message });
         }
@@ -105,35 +128,33 @@ export const updateFolder = (req, res) => {
         }
         
         const oldFolder = oldData[0];
-        let changes = [];
-        let hasActualChange = false;
-        
-        if (folder_name && folder_name !== oldFolder.folder_name) {
-            changes.push(`renamed from "${oldFolder.folder_name}" to "${folder_name}"`);
-            hasActualChange = true;
-        }
-        if (permissions && permissions !== oldFolder.permissions) {
-            changes.push(`changed permissions from ${oldFolder.permissions} to ${permissions}`);
-            hasActualChange = true;
-        }
-        
-        if (!hasActualChange) {
-            return res.status(400).json({ message: 'No changes detected' });
-        }
-        
         let updates = [];
         let values = [];
+        let changes = [];
         
-        if (folder_name) {
+        if (folder_name && folder_name !== oldFolder.folder_name) {
             updates.push('folder_name = ?');
             values.push(folder_name);
+            changes.push(`name from "${oldFolder.folder_name}" to "${folder_name}"`);
         }
-        if (permissions) {
+        
+        if (permissions && permissions !== oldFolder.permissions) {
             if (!['public', 'private', 'restricted'].includes(permissions)) {
                 return res.status(400).json({ message: 'Permissions must be public, private, or restricted' });
             }
             updates.push('permissions = ?');
             values.push(permissions);
+            changes.push(`permissions from ${oldFolder.permissions} to ${permissions}`);
+        }
+        
+        if (parent_folder_id !== undefined && parent_folder_id !== oldFolder.parent_folder_id) {
+            updates.push('parent_folder_id = ?');
+            values.push(parent_folder_id === 0 ? null : parent_folder_id);
+            changes.push(`moved to parent folder ID ${parent_folder_id || 'Root'}`);
+        }
+        
+        if (updates.length === 0) {
+            return res.status(400).json({ message: 'No changes detected' });
         }
         
         values.push(id);
@@ -146,15 +167,16 @@ export const updateFolder = (req, res) => {
                     return res.status(500).json({ message: 'Database error', error: err.message });
                 }
                 
-                // Log with readable message
-                const changeText = changes.join(' and ');
-                db.query(
-                    'INSERT INTO Logs (user_id, action, details) VALUES (?, "edit_folder", ?)',
-                    [userId, `${changeText}`],
-                    (logErr) => { if (logErr) console.error('Log error:', logErr.message); }
-                );
+                if (changes.length > 0) {
+                    const changeText = changes.join(', ');
+                    db.query(
+                        'INSERT INTO Logs (user_id, action, details) VALUES (?, "edit_folder", ?)',
+                        [userId, `Updated folder: ${changeText}`],
+                        (logErr) => { if (logErr) console.error('Failed to log:', logErr.message); }
+                    );
+                }
                 
-                res.json({ message: 'Folder updated successfully' });
+                res.json({ message: 'Folder updated successfully', changes: changes });
             }
         );
     });

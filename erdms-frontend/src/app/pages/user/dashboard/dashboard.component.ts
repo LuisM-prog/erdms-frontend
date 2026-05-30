@@ -1,21 +1,34 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
 import { AuthService } from '../../../services/auth.service';
+import { UserSidebarComponent } from '../../../components/user-sidebar/user-sidebar.component';
+import { UserHeaderComponent } from '../../../components/user-header/user-header.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule, UserSidebarComponent, UserHeaderComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit {
   loggedInUser: any = null;
   userLogs: any[] = [];
+  recentDocuments: any[] = [];
+  recentFolders: any[] = [];
   isLoading = true;
   errorMessage = '';
+  searchQuery = '';
+
+  // Stats
+  totalDocumentsAccessed = 0;
+  totalDownloads = 0;
+  totalFoldersAccessed = 0;
+  lastActiveDate = '';
+  memberSince = '';
 
   constructor(
     private router: Router,
@@ -33,12 +46,42 @@ export class DashboardComponent implements OnInit {
     try {
       const userId = this.auth.currentUser()?.user_id;
       if (userId) {
-        // Get user profile
         this.loggedInUser = await this.state.getMyProfile();
         
         // Get user-specific logs
         const logsResult = await this.state.getLogsByUser(userId, 1, 100);
         this.userLogs = logsResult.logs || [];
+        
+        // Sort by timestamp descending (newest first)
+        this.userLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+        // Calculate stats
+        this.calculateStats();
+        
+        // Extract recent items
+        this.extractRecentDocuments();
+        this.extractRecentFolders();
+        
+        // Get last active date
+        if (this.userLogs.length > 0) {
+          const lastActive = new Date(this.userLogs[0].timestamp);
+          this.lastActiveDate = lastActive.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          });
+        } else {
+          this.lastActiveDate = 'Never';
+        }
+        
+        // Format member since date
+        if (this.loggedInUser?.created_at) {
+          this.memberSince = new Date(this.loggedInUser.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+        }
       }
     } catch (error) {
       this.errorMessage = 'Failed to load your activity data';
@@ -48,47 +91,104 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  getActionIcon(action: string): string {
+  calculateStats() {
+    // Documents accessed (download + view)
+    this.totalDocumentsAccessed = this.userLogs.filter(log => 
+      log.action === 'download' || log.action === 'view'
+    ).length;
+    
+    // Downloads count
+    this.totalDownloads = this.userLogs.filter(log => log.action === 'download').length;
+    
+    // Folders accessed (view_folder actions)
+    this.totalFoldersAccessed = this.userLogs.filter(log => log.action === 'view_folder').length;
+  }
+
+  extractRecentDocuments() {
+    const downloadLogs = this.userLogs.filter(log => 
+      (log.action === 'download' || log.action === 'view') && log.document_title
+    );
+    
+    const uniqueDocs = new Map();
+    for (const log of downloadLogs) {
+      if (!uniqueDocs.has(log.document_title)) {
+        uniqueDocs.set(log.document_title, {
+          title: log.document_title,
+          document_id: log.document_id,
+          timestamp: log.timestamp,
+          action: log.action
+        });
+      }
+    }
+    
+    this.recentDocuments = Array.from(uniqueDocs.values()).slice(0, 5);
+  }
+
+  extractRecentFolders() {
+    const folderLogs = this.userLogs.filter(log => 
+      log.action === 'view_folder' && log.details
+    );
+    
+    const uniqueFolders = new Map();
+    for (const log of folderLogs) {
+      // Extract folder name from details (e.g., "Viewed folder 'Folder Name'")
+      const match = log.details?.match(/Viewed folder '([^']+)'/);
+      const folderName = match ? match[1] : 'Unknown Folder';
+      
+      if (!uniqueFolders.has(folderName)) {
+        uniqueFolders.set(folderName, {
+          name: folderName,
+          timestamp: log.timestamp
+        });
+      }
+    }
+    
+    this.recentFolders = Array.from(uniqueFolders.values()).slice(0, 5);
+  }
+
+  getActionText(action: string): string {
+    const actionMap: Record<string, string> = {
+      'login': 'Logged in',
+      'logout': 'Logged out',
+      'download': 'Downloaded document',
+      'view': 'Viewed document',
+      'view_folder': 'Viewed folder',
+      'edit_profile': 'Updated profile',
+      'change_password': 'Changed password'
+    };
+    return actionMap[action] || action?.replace(/_/g, ' ') || 'Performed action';
+  }
+
+  getActionDetail(log: any): string {
+    if (log.details) {
+      // Clean up details for display
+      let detail = log.details;
+      if (detail.startsWith('Viewed document')) {
+        detail = detail.replace('Viewed document', '');
+      } else if (detail.startsWith('Downloaded document')) {
+        detail = detail.replace('Downloaded document', '');
+      } else if (detail.startsWith('Viewed folder')) {
+        detail = detail.replace('Viewed folder', '');
+      }
+      return detail;
+    }
+    if (log.document_title) {
+      return `"${log.document_title}"`;
+    }
+    return '';
+  }
+
+  getActivityIcon(action: string): string {
     const iconMap: Record<string, string> = {
       'login': '🔐',
       'logout': '🚪',
-      'upload': '📤',
-      'download': '📥',
-      'delete': '🗑️',
-      'edit': '✏️',
-      'create_user': '👤+',
-      'edit_user': '👤✏️',
-      'delete_user': '👤🗑️',
-      'toggle_user_status': '👤⚡',
-      'create_folder': '📁+',
-      'edit_folder': '📁✏️',
-      'delete_folder': '📁🗑️'
+      'download': '⬇️',
+      'view': '👁️',
+      'view_folder': '📁',
+      'edit_profile': '✏️',
+      'change_password': '🔑'
     };
     return iconMap[action] || '📋';
-  }
-
-  getActionDescription(log: any): string {
-    if (log.details) {
-      return log.details;
-    }
-    
-    const action = log.action;
-    switch (action) {
-      case 'login': return 'Logged into the system';
-      case 'logout': return 'Logged out of the system';
-      case 'upload': return `Uploaded "${log.document_title || 'a document'}"`;
-      case 'download': return `Downloaded "${log.document_title || 'a document'}"`;
-      case 'delete': return `Deleted "${log.document_title || 'a document'}"`;
-      case 'edit': return `Edited "${log.document_title || 'a document'}"`;
-      case 'create_user': return 'Created a new user account';
-      case 'edit_user': return 'Edited a user account';
-      case 'delete_user': return 'Deleted a user account';
-      case 'toggle_user_status': return 'Toggled a user\'s account status';
-      case 'create_folder': return 'Created a new folder';
-      case 'edit_folder': return 'Edited a folder';
-      case 'delete_folder': return 'Deleted a folder';
-      default: return `Performed ${action?.replace(/_/g, ' ') || 'an action'}`;
-    }
   }
 
   formatTimestamp(timestamp: string): string {
@@ -111,16 +211,28 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  navigateToDocuments() {
+  search() {
+    if (this.searchQuery.trim()) {
+      this.router.navigate(['/user/document-management'], { 
+        queryParams: { search: this.searchQuery }
+      });
+    }
+  }
+
+  goToDocuments() {
     this.router.navigate(['/user/document-management']);
   }
 
-  navigateToProfile() {
+  goToProfile() {
     this.router.navigate(['/user/user-profile']);
   }
 
+  openDocument(doc: any) {
+    this.router.navigate(['/user/document-management']);
+  }
+
   executeSignOut() {
-    if (confirm('Are you sure you want to log out of your session?')) {
+    if (confirm('Are you sure you want to log out?')) {
       this.auth.logout();
     }
   }

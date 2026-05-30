@@ -1,48 +1,15 @@
 <div class="dashboard-container">
   
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-logo">🛡️</div>
-      <div class="brand-text">
-        <h3>ERDMS</h3>
-        <small>User Portal</small>
-      </div>
-    </div>
-    
-    <nav class="sidebar-menu">
-      <a class="menu-item active">
-        <span class="icon">📊</span> Dashboard
-      </a>
-      <a class="menu-item" (click)="navigateToDocuments()">
-        <span class="icon">📁</span> Documents
-      </a>
-      <a class="menu-item" (click)="navigateToProfile()">
-        <span class="icon">👤</span> Profile
-      </a>
-    </nav>
-
-    <div class="sidebar-footer">
-      <a class="menu-item logout" (click)="executeSignOut()">
-        <span class="icon">🚪</span> Sign Out
-      </a>
-    </div>
-  </aside>
+  <app-user-sidebar></app-user-sidebar>
 
   <!-- Main Content -->
   <main class="main-content">
     <header class="main-header">
       <div class="header-title">
-        <h1>My Dashboard</h1>
+        <h1>Dashboard</h1>
         <p>Welcome back, {{ loggedInUser?.name || 'User' }}</p>
       </div>
-      <div class="header-profile">
-        <div class="profile-avatar">👤</div>
-        <div class="profile-info">
-          <span class="profile-name">{{ loggedInUser?.name || 'User' }}</span>
-          <span class="profile-role">{{ loggedInUser?.role_name === 'admin' ? 'Administrator' : 'Employee' }}</span>
-        </div>
-      </div>
+      <app-user-header></app-user-header>
     </header>
 
     <div class="content-body">
@@ -55,33 +22,164 @@
 
       <!-- Error Message -->
       <div *ngIf="errorMessage" class="error-message">
-        ⚠️ {{ errorMessage }}
+        {{ errorMessage }}
       </div>
 
       <!-- Dashboard Content -->
-      <div *ngIf="!isLoading && !errorMessage">
+      <div *ngIf="!isLoading && !errorMessage && loggedInUser">
         
-        <!-- Recent Activity Logs -->
-        <div class="activity-panel">
-          <div class="panel-header">
-            <h2>📋 My Recent Workspace Activity Logs</h2>
-            <span class="badge">{{ userLogs.length }} Total Activities</span>
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">📄</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalDocumentsAccessed }}</div>
+              <div class="stat-label">Documents Accessed</div>
+            </div>
           </div>
           
-          <div class="panel-body">
-            <div *ngIf="userLogs.length === 0" class="empty-state">
-              <span class="empty-icon">📭</span>
-              <p>No activity records found for your account yet.</p>
-              <p class="empty-hint">Activities will appear here when you upload, download, or manage documents.</p>
+          <div class="stat-card">
+            <div class="stat-icon">⬇️</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalDownloads }}</div>
+              <div class="stat-label">Downloads</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon">📁</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalFoldersAccessed }}</div>
+              <div class="stat-label">Folders Accessed</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-info">
+              <div class="stat-value">Member since</div>
+              <div class="stat-label">{{ memberSince }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two Column Layout -->
+        <div class="dashboard-two-column">
+          
+          <!-- Left Column: Recent Activity -->
+          <div class="activity-panel">
+            <div class="panel-header">
+              <h2>Recent Activity</h2>
+              <span class="badge">{{ userLogs.length }} total</span>
             </div>
             
-            <div *ngFor="let log of userLogs" class="activity-item">
-              <div class="activity-icon">{{ getActionIcon(log.action) }}</div>
-              <div class="activity-details">
-                <div class="activity-action">{{ getActionDescription(log) }}</div>
-                <div class="activity-time">{{ formatTimestamp(log.timestamp) }}</div>
+            <div class="panel-body">
+              <div *ngIf="userLogs.length === 0" class="empty-state">
+                <p>No activity records found.</p>
+                <p class="empty-hint">Activities will appear when you use the system.</p>
+              </div>
+              
+              <div *ngFor="let log of userLogs.slice(0, 10)" class="activity-item">
+                <div class="activity-icon">{{ getActivityIcon(log.action) }}</div>
+                <div class="activity-details">
+                  <div class="activity-action">
+                    {{ getActionText(log.action) }}
+                    <span *ngIf="getActionDetail(log)" class="activity-detail">{{ getActionDetail(log) }}</span>
+                  </div>
+                  <div class="activity-time">{{ formatTimestamp(log.timestamp) }}</div>
+                </div>
               </div>
             </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="right-column">
+            
+            <!-- Recently Accessed Documents -->
+            <div class="recent-panel">
+              <div class="panel-header">
+                <h2>Recently Accessed</h2>
+                <span class="badge">{{ recentDocuments.length }} documents</span>
+              </div>
+              <div class="panel-body">
+                <div *ngIf="recentDocuments.length === 0" class="empty-state">
+                  <p>No recently accessed documents.</p>
+                </div>
+                <div *ngFor="let doc of recentDocuments" class="recent-item" (click)="openDocument(doc)">
+                  <div class="recent-icon">📄</div>
+                  <div class="recent-info">
+                    <div class="recent-title">{{ doc.title }}</div>
+                    <div class="recent-time">{{ formatTimestamp(doc.timestamp) }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recently Accessed Folders -->
+            <div class="recent-panel">
+              <div class="panel-header">
+                <h2>Recently Viewed Folders</h2>
+                <span class="badge">{{ recentFolders.length }} folders</span>
+              </div>
+              <div class="panel-body">
+                <div *ngIf="recentFolders.length === 0" class="empty-state">
+                  <p>No recently viewed folders.</p>
+                </div>
+                <div *ngFor="let folder of recentFolders" class="recent-item">
+                  <div class="recent-icon">📁</div>
+                  <div class="recent-info">
+                    <div class="recent-title">{{ folder.name }}</div>
+                    <div class="recent-time">{{ formatTimestamp(folder.timestamp) }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Access -->
+            <div class="quick-access-panel">
+              <div class="panel-header">
+                <h2>Quick Access</h2>
+              </div>
+              <div class="quick-access-buttons">
+                <button class="quick-btn" (click)="goToDocuments()">
+                  <span class="quick-icon">📁</span>
+                  Browse Documents
+                </button>
+                <button class="quick-btn" (click)="goToProfile()">
+                  <span class="quick-icon">👤</span>
+                  My Profile
+                </button>
+              </div>
+              
+              <!-- Quick Search -->
+              <div class="quick-search">
+                <div class="search-input-wrapper">
+                  <span class="search-icon">🔍</span>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="searchQuery" 
+                    (keyup.enter)="search()"
+                    placeholder="Search documents..."
+                    class="search-input">
+                </div>
+                <button class="search-btn" (click)="search()">Search</button>
+              </div>
+            </div>
+
+            <!-- Last Active Info -->
+            <div class="info-panel">
+              <div class="info-row">
+                <span class="info-label">Last Active</span>
+                <span class="info-value">{{ lastActiveDate }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Account Status</span>
+                <span class="info-value status-badge" [class.active]="loggedInUser?.status === 'active'">
+                  {{ loggedInUser?.status === 'active' ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+            </div>
+
           </div>
         </div>
 
