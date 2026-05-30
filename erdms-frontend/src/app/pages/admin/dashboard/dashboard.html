@@ -1,53 +1,18 @@
 <div class="wireframe-layout">
   
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-logo">🛡️</div>
-      <div class="brand-text">
-        <h3>ERDMS</h3>
-        <small>Group 4 Platform</small>
-      </div>
-    </div>
-    
-    <nav class="sidebar-menu">
-      <a class="menu-item" (click)="navToDashboard()" style="cursor: pointer;">
-        <span class="icon">🏠</span> Dashboard
-      </a>
-      <a class="menu-item" (click)="navToDocManagement()" style="cursor: pointer;">
-        <span class="icon">📄</span> Document Management
-      </a>
-      <a class="menu-item" (click)="navToUserManagement()" style="cursor: pointer;">
-        <span class="icon">👤</span> User Management
-      </a>
-      <a class="menu-item" (click)="navToAuditLogs()" style="cursor: pointer;">
-        <span class="icon">🛡️</span> Logs & Audit Trail
-      </a>
-    </nav>
-
-    <div class="sidebar-footer">
-      <a class="menu-item logout" (click)="executeSignOut()" style="cursor: pointer;">
-        <span class="icon">🚪</span> Sign Out
-      </a>
-    </div>
-  </aside>
+  <app-sidebar></app-sidebar>
 
   <main class="main-content">
     <header class="main-header">
       <div class="header-title">
-        <h1>Administrative Dashboard</h1>
+        <h1>Administrative Matrix Analytics</h1>
+        <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b;">Central Operations Hub Overview</p>
       </div>
-      <div class="header-profile">
-        <div class="profile-avatar">👤</div>
-        <div class="profile-info">
-          <span class="profile-name">{{ auth.currentUser()?.name || 'Admin' }}</span>
-          <span class="profile-role">Administrator</span>
-        </div>
-      </div>
+      <app-admin-header></app-admin-header>
     </header>
 
     <div class="content-body">
       
-      <!-- Stats Cards -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 24px;">
         
         <div class="stat-card">
@@ -70,7 +35,6 @@
 
       </div>
 
-      <!-- Activity Logs Section -->
       <div class="wireframe-panel">
         <div class="panel-header">
           <h2>Global Central System Activity</h2>
@@ -82,7 +46,7 @@
             No activity logs found.
           </div>
           <div *ngFor="let log of filteredGlobalLogs" class="log-entry">
-            <div class="log-time">📅 {{ log.timestamp | date:'MMM d, y, h:mm a' }}</div>
+            <div class="log-time">{{ log.timestamp | date:'MMM d, y, h:mm a' }}</div>
             <div class="log-user">UID: {{ log.user_id }}</div>
             <div class="log-message">{{ extractLogText(log) }}</div>
           </div>

@@ -1,138 +1,135 @@
 <div class="wireframe-layout">
   
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-logo">🛡️</div>
-      <div class="brand-text">
-        <h3>ERDMS</h3>
-        <small>Group 4 Platform</small>
-      </div>
-    </div>
-    
-    <nav class="sidebar-menu">
-      <a class="menu-item" (click)="navToDashboard()" style="cursor: pointer;">
-        <span class="icon">🏠</span> Dashboard
-      </a>
-      <a class="menu-item" (click)="navToDocManagement()" style="cursor: pointer;">
-        <span class="icon">📄</span> Document Management
-      </a>
-      <a class="menu-item" (click)="navToUserManagement()" style="cursor: pointer;">
-        <span class="icon">👤</span> User Management
-      </a>
-      <a class="menu-item active" (click)="navToAuditLogs()" style="cursor: pointer;">
-        <span class="icon">🛡️</span> Logs & Audit Trail
-      </a>
-    </nav>
-
-    <div class="sidebar-footer">
-      <a class="menu-item logout" (click)="executeSignOut()" style="cursor: pointer;">
-        <span class="icon">🚪</span> Sign Out
-      </a>
-    </div>
-  </aside>
+  <app-sidebar></app-sidebar>
 
   <main class="main-content">
     <header class="main-header">
-      <div class="header-search-box">
-        <span class="search-icon">🔍</span>
-        <input 
-          type="text" 
-          [(ngModel)]="searchQuery" 
-          placeholder="Filter audit entries by details or UID...">
+      <div class="header-title">
+        <h1>Logs & Audit Trail</h1>
+        <p class="header-subtitle">Complete system activity history with detailed audit trails</p>
       </div>
-      
-      <div class="header-profile">
-        <div class="profile-avatar">👤</div>
-        <div class="profile-info">
-          <span class="profile-name">{{ auth.currentUser()?.name || 'Admin' }}</span>
-          <span class="profile-role">Administrator</span>
-        </div>
-      </div>
+      <app-admin-header></app-admin-header>
     </header>
 
     <div class="content-body">
       
-      <div class="filter-action-bar">
-        <div class="filter-group">
-          <label class="filter-label">Select Event Segment:</label>
-          <select [(ngModel)]="selectedCategory" class="filter-dropdown">
-            <option value="ALL">All System Parameters Trace</option>
-            <option value="LOGIN">User Login History Tracker</option>
-            <option value="TRANSFER">Uploads & Downloads Transfers</option>
-            <option value="ACCESS">System Security Access Logs</option>
-          </select>
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>🔍 Search</label>
+            <input 
+              type="text" 
+              [(ngModel)]="searchQuery" 
+              (ngModelChange)="onFilterChange()"
+              placeholder="Search by user, action, or details..."
+              class="filter-input">
+          </div>
+          
+          <div class="filter-group">
+            <label>📋 Action Type</label>
+            <select [(ngModel)]="selectedAction" (ngModelChange)="onFilterChange()" class="filter-select">
+              <option *ngFor="let action of availableActions" [value]="action.value">
+                {{ action.label }}
+              </option>
+            </select>
+          </div>
+          
+          <div class="filter-group date-group">
+            <label>📅 From Date</label>
+            <input type="date" [(ngModel)]="startDate" (ngModelChange)="onFilterChange()" class="filter-date">
+          </div>
+          
+          <div class="filter-group date-group">
+            <label>📅 To Date</label>
+            <input type="date" [(ngModel)]="endDate" (ngModelChange)="onFilterChange()" class="filter-date">
+          </div>
+          
+          <button class="btn-clear" (click)="clearFilters()" *ngIf="searchQuery || selectedAction !== 'ALL' || startDate || endDate">
+            Clear Filters
+          </button>
         </div>
       </div>
 
-      <div class="wireframe-panel">
-        <div class="panel-header">
-          <h2>Global Central System Activity Trail</h2>
-          <p>Real-time system mutations, file indexing steps, and identity footprints.</p>
+      <!-- Stats Summary -->
+      <div class="stats-summary" *ngIf="!isLoading">
+        <div class="stat-badge">
+          <span class="stat-icon">📊</span>
+          <span class="stat-text">Total Logs: {{ totalItems }}</span>
+        </div>
+        <div class="stat-badge" *ngIf="filteredLogs.length !== allLogs.length">
+          <span class="stat-icon">🔍</span>
+          <span class="stat-text">Showing {{ filteredLogs.length }} of {{ allLogs.length }}</span>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading audit logs...</p>
+      </div>
+
+      <!-- Error Message -->
+      <div *ngIf="errorMessage" class="error-message">
+        ⚠️ {{ errorMessage }}
+      </div>
+
+      <!-- Logs Table -->
+      <div class="logs-table-container" *ngIf="!isLoading && !errorMessage">
+        <div class="table-header">
+          <h2>System Activity Logs</h2>
+          <div class="pagination-info" *ngIf="totalItems > 0">
+            Showing {{ getStartIndex() }} - {{ getEndIndex() }} of {{ totalItems }} entries
+          </div>
         </div>
 
-        <div class="panel-body">
-          <!-- Loading State -->
-          <div *ngIf="isLoading" style="text-align: center; padding: 40px; color: #64748b;">
-            Loading logs...
-          </div>
-
-          <!-- Logs Table -->
-          <table class="activity-table" *ngIf="!isLoading">
-            <thead>
-              <tr>
-                <th style="width: 220px;">Timestamp</th>
-                <th style="width: 110px;">Account ID</th>
-                <th style="width: 160px;">Trace Category</th>
-                <th>Activity Target Details</th>
-                <th style="width: 120px; text-align: center;">Status Flag</th>
-              </tr>
-            </thead>
-            <tbody>
-            <tr *ngFor="let log of filteredAuditTrail">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th style="width: 180px">Timestamp</th>
+              <th style="width: 80px">User ID</th>
+              <th style="width: 160px">Action</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let log of paginatedLogs">
               <td class="timestamp-cell">
-                📅 {{ log.timestamp | date:'MMM d, y, h:mm a' }}
+                {{ formatTimestamp(log.timestamp) }}
               </td>
               <td class="uid-cell">
-                UID: {{ log.user_id }}
+                #{{ log.user_id }}
               </td>
               <td>
-                <span [class]="getBadgeClass(log.action)" style="padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-block;">
-                  {{ getActionDisplay(log.action) }}
+                <span [class]="getActionBadgeClass(log.action)" class="action-badge">
+                  {{ getActionIcon(log.action) }} {{ getActionDisplayText(log.action) }}
                 </span>
               </td>
               <td class="details-cell">
                 {{ getActionDescription(log) }}
               </td>
-              <td style="text-align: center;">
-                <span class="status-pill success-pill">Success</span>
-              </td>
             </tr>
-            <tr *ngIf="filteredAuditTrail.length === 0 && !isLoading">
-              <td colspan="5" class="empty-state-cell">
-                No security mutations or operation traces recorded in this system window block.
+            <tr *ngIf="paginatedLogs.length === 0">
+              <td colspan="4" class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>No logs found matching your filters</p>
+                <button class="btn-clear-empty" (click)="clearFilters()">Clear All Filters</button>
               </td>
             </tr>
           </tbody>
-          </table>
+        </table>
 
-          <!-- Pagination Controls -->
-          <div *ngIf="totalLogs > 0 && !isLoading" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc;">
-            <div style="font-size: 13px; color: #64748b;">
-              Showing page {{ currentPage }} of {{ totalPages }} ({{ totalLogs }} total logs)
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button (click)="prevPage()" [disabled]="currentPage === 1" 
-                      style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; cursor: pointer;"
-                      [style.opacity]="currentPage === 1 ? '0.5' : '1'">
-                ← Previous
-              </button>
-              <button (click)="nextPage()" [disabled]="currentPage === totalPages"
-                      style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; cursor: pointer;"
-                      [style.opacity]="currentPage === totalPages ? '0.5' : '1'">
-                Next →
-              </button>
-            </div>
+        <!-- Pagination Controls -->
+        <div class="pagination-controls" *ngIf="totalPages > 1">
+          <button class="page-btn" (click)="prevPage()" [disabled]="currentPage === 1">
+            ← Previous
+          </button>
+          <div class="page-numbers">
+            <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
           </div>
+          <button class="page-btn" (click)="nextPage()" [disabled]="currentPage === totalPages">
+            Next →
+          </button>
         </div>
       </div>
 

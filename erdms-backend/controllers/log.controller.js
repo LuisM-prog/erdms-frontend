@@ -383,3 +383,44 @@ export const getRecentLogs = (req, res) => {
         });
     });
 };
+
+// GET logs for the currently logged-in user (employees can access this)
+export const getMyLogs = (req, res) => {
+    const userId = req.user.user_id;
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    const query = `
+        SELECT l.log_id, l.user_id, l.action, l.document_id, l.timestamp, l.details,
+               d.title as document_title
+        FROM Logs l
+        LEFT JOIN Documents d ON l.document_id = d.document_id
+        WHERE l.user_id = ?
+        ORDER BY l.timestamp DESC
+        LIMIT ? OFFSET ?
+    `;
+    
+    const countQuery = 'SELECT COUNT(*) as total FROM Logs WHERE user_id = ?';
+    
+    db.query(countQuery, [userId], (err, countResult) => {
+        if (err) {
+            return res.status(500).json({ message: 'Database error', error: err.message });
+        }
+        
+        const total = countResult[0].total;
+        
+        db.query(query, [userId, parseInt(limit), offset], (err, results) => {
+            if (err) {
+                return res.status(500).json({ message: 'Database error', error: err.message });
+            }
+            
+            res.json({
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total_pages: Math.ceil(total / parseInt(limit)),
+                logs: results
+            });
+        });
+    });
+};

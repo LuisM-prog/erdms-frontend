@@ -1,4 +1,3 @@
-// Generates a random temporary password
 // Format: Word + number + symbol (easy to read aloud)
 const generatePassword = () => {
     const adjectives = ['Happy', 'Strong', 'Bright', 'Calm', 'Swift', 'Brave', 'Clever', 'Kind'];

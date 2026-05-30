@@ -10,6 +10,7 @@ import documentRoutes from './routes/document.routes.js';
 import permissionRoutes from './routes/permission.routes.js';
 import logRoutes from './routes/log.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js'; 
+import pendingActionsRoutes from './routes/pending-actions.routes.js';
 import { seedAdmin } from './utils/seedAdmin.js';
 
 
@@ -27,6 +28,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/permissions', permissionRoutes); 
 app.use('/api/logs', logRoutes);
 app.use('/api/dashboard', dashboardRoutes); 
+app.use('/api/pending-actions', pendingActionsRoutes);
 
 // 404 handler
 app.use((req, res) => {

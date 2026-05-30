@@ -4,11 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
 import { AuthService } from '../../../services/auth.service';
+import { SidebarComponent } from '../../../components/sidebar/sidebar.component';
+import { AdminHeaderComponent } from '../../../components/admin-header/admin-header.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent, AdminHeaderComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
@@ -34,7 +36,6 @@ export class DashboardComponent implements OnInit {
   async loadDashboardData() {
     this.isLoading = true;
     try {
-      // Load all dashboard data in parallel
       const [stats, logs] = await Promise.all([
         this.state.getDashboardStats(),
         this.state.getAllLogs({ limit: 100 })
@@ -50,7 +51,6 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  // Dashboard stats computed properties
   get totalRegisteredUsers(): number {
     return this.dashboardStats?.users?.total || 0;
   }
@@ -83,7 +83,6 @@ export class DashboardComponent implements OnInit {
   get filteredGlobalLogs(): any[] {
     let logs = this.allGlobalLogs;
     
-    // Filter by search query
     if (this.logSearchQuery) {
       const query = this.logSearchQuery.toLowerCase();
       logs = logs.filter(log => {
@@ -93,7 +92,6 @@ export class DashboardComponent implements OnInit {
       });
     }
     
-    // Filter by log type
     if (this.selectedLogTypeFilter !== 'All Logs') {
       logs = logs.filter(log => {
         if (this.selectedLogTypeFilter === 'Modifications') {
@@ -113,6 +111,7 @@ export class DashboardComponent implements OnInit {
   extractLogText(log: any): string {
     if (!log) return '';
     if (log.message) return log.message;
+    if (log.details) return log.details;
     
     switch (log.action) {
       case 'login': return `${log.user_name || 'User'} logged in`;
@@ -121,18 +120,10 @@ export class DashboardComponent implements OnInit {
       case 'download': return `${log.user_name || 'User'} downloaded "${log.document_title || 'document'}"`;
       case 'delete': return `${log.user_name || 'User'} deleted "${log.document_title || 'document'}"`;
       case 'edit': return `${log.user_name || 'User'} edited "${log.document_title || 'document'}"`;
-      default: return log.action_description || log.details || 'System action performed';
+      default: return log.action_description || 'System action performed';
     }
   }
 
-  async purgeEntireGlobalAuditHistory() {
-    if (confirm('Are you completely certain you want to purge the global historical log buffer? This action cannot be undone.')) {
-      // Note: Backend doesn't have a bulk delete endpoint yet
-      alert('This feature requires a backend endpoint for bulk log deletion. Please implement DELETE /api/logs/all');
-    }
-  }
-
-  // Navigation Handlers
   navToDashboard() { this.router.navigate(['/admin/dashboard']); }
   navToDocManagement() { this.router.navigate(['/admin/folder-management']); }
   navToUserManagement() { this.router.navigate(['/admin/user-management']); }
