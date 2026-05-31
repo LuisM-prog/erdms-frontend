@@ -13,46 +13,128 @@
 
     <div class="content-body">
       
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 24px;">
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading dashboard data...</p>
+      </div>
+
+      <!-- Error Message -->
+      <div *ngIf="errorMessage" class="error-message">
+        ⚠️ {{ errorMessage }}
+      </div>
+
+      <div *ngIf="!isLoading">
         
-        <div class="stat-card">
-          <div class="stat-icon">👤</div>
-          <div>
-            <div class="stat-label">Registered Users</div>
-            <div class="stat-value">{{ totalRegisteredUsers }}</div>
-            <div class="stat-sub">{{ activeUsersCount }} Active Credentials</div>
+        <!-- Stats Cards Row 1 -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👤</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalRegisteredUsers }}</div>
+              <div class="stat-label">Registered Users</div>
+              <div class="stat-sub">{{ activeUsersCount }} Active</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">📄</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalUploadedDocuments }}</div>
+              <div class="stat-label">Documents</div>
+              <div class="stat-sub">Total Uploaded</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">📁</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ dashboardStats?.folders?.total || 0 }}</div>
+              <div class="stat-label">Folders</div>
+              <div class="stat-sub">Total Directories</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+              <div class="stat-value">{{ activeEngagementRatio }}%</div>
+              <div class="stat-label">Active Ratio</div>
+              <div class="stat-sub">User Engagement</div>
+            </div>
           </div>
         </div>
 
-        <div class="stat-card">
-          <div class="stat-icon">📄</div>
-          <div>
-            <div class="stat-label">Uploaded Documents</div>
-            <div class="stat-value">{{ totalUploadedDocuments }}</div>
-            <div class="stat-sub">Indexed across secure trees</div>
+        <!-- Real-time Activity Counter Widget -->
+        <div class="realtime-activity-panel">
+          <div class="panel-header">
+            <h2>📡 Live System Activity</h2>
+            <div class="live-indicator">
+              <span class="live-dot"></span>
+              Live Updates (every 10s)
+            </div>
+          </div>
+          <div class="realtime-stats">
+            <div class="realtime-card">
+              <div class="realtime-value">{{ actionsLastHour }}</div>
+              <div class="realtime-label">Actions (Last Hour)</div>
+              <div class="realtime-trend">{{ actionsLastHour > 0 ? '↑ Active' : '— Idle' }}</div>
+            </div>
+            <div class="realtime-card">
+              <div class="realtime-value">{{ actionsLast24Hours }}</div>
+              <div class="realtime-label">Actions (Last 24 Hours)</div>
+              <div class="realtime-trend">{{ actionsLast24Hours > actionsLastHour ? '↑ Increasing' : '→ Steady' }}</div>
+            </div>
+            <div class="realtime-card">
+              <div class="realtime-value">{{ actionsToday }}</div>
+              <div class="realtime-label">Actions (Today)</div>
+              <div class="realtime-trend">{{ actionsToday > 0 ? '↑ Active Today' : 'No activity yet' }}</div>
+            </div>
+            <div class="realtime-card">
+              <div class="realtime-value">{{ allGlobalLogs.length }}</div>
+              <div class="realtime-label">Total All Time</div>
+              <div class="realtime-trend">Historical Total</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Activity Logs -->
+        <div class="wireframe-panel">
+          <div class="panel-header">
+            <h2>Global Central System Activity</h2>
+            <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b;">Complete historical trace operations captured across all app contexts</p>
+          </div>
+
+          <!-- Filter Bar -->
+          <div class="filter-bar">
+            <div class="filter-group">
+              <label>🔍 Search</label>
+              <input type="text" [(ngModel)]="logSearchQuery" placeholder="Filter by user or action..." class="filter-input">
+            </div>
+            <div class="filter-group">
+              <label>📋 Type</label>
+              <select [(ngModel)]="selectedLogTypeFilter" class="filter-select">
+                <option value="All Logs">All Logs</option>
+                <option value="Uploads">Uploads Only</option>
+                <option value="Deletions">Deletions Only</option>
+                <option value="Modifications">Modifications Only</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="panel-body" style="max-height: 400px; overflow-y: auto;">
+            <div *ngIf="filteredGlobalLogs.length === 0" style="text-align: center; padding: 40px; color: #94a3b8;">
+              No activity logs found.
+            </div>
+            <div *ngFor="let log of filteredGlobalLogs.slice(0, 50)" class="log-entry">
+              <div class="log-time">📅 {{ log.timestamp | date:'MMM d, y, h:mm a' }}</div>
+              <div class="log-user">UID: {{ log.user_id }}</div>
+              <div class="log-message">{{ extractLogText(log) }}</div>
+            </div>
           </div>
         </div>
 
       </div>
-
-      <div class="wireframe-panel">
-        <div class="panel-header">
-          <h2>Global Central System Activity</h2>
-          <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b;">Complete historical trace operations captured across all app contexts</p>
-        </div>
-
-        <div class="panel-body" style="max-height: 400px; overflow-y: auto;">
-          <div *ngIf="filteredGlobalLogs.length === 0" style="text-align: center; padding: 40px; color: #94a3b8;">
-            No activity logs found.
-          </div>
-          <div *ngFor="let log of filteredGlobalLogs" class="log-entry">
-            <div class="log-time">{{ log.timestamp | date:'MMM d, y, h:mm a' }}</div>
-            <div class="log-user">UID: {{ log.user_id }}</div>
-            <div class="log-message">{{ extractLogText(log) }}</div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </main>
 </div>

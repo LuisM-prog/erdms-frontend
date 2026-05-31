@@ -4,7 +4,9 @@ import {
     getPendingActions,
     approveAction,
     rejectAction,
-    getPendingActionHistory  
+    getPendingActionHistory,
+    requestPasswordReset,
+    requestRoleChange      
 } from '../controllers/pending-actions.controller.js';
 import authMiddleware from '../middleware/auth.js';
 import { isAdmin } from '../middleware/role.js';
@@ -15,12 +17,14 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(isAdmin);
 
-// Request status change (requires 2FA for non-super admins)
+// Request routes
 router.post('/request', requestStatusChange);
+router.post('/password-reset-request', requestPasswordReset);
+router.post('/role-change-request', requestRoleChange);  
 
 // Super Admin only routes
 router.get('/', getPendingActions);
-router.get('/history', getPendingActionHistory);  
+router.get('/history', getPendingActionHistory);
 router.post('/:id/approve', approveAction);
 router.post('/:id/reject', rejectAction);
 

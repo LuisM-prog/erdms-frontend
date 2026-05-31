@@ -6,7 +6,12 @@
     <header class="main-header">
       <div class="header-search">
         <span>🔍</span>
-        <input type="text" [(ngModel)]="searchQuery" placeholder="Search folders or documents...">
+        <input 
+          type="text" 
+          [(ngModel)]="searchQuery" 
+          (input)="onSearchInput()"
+          placeholder="Search folders or documents...">
+        <button *ngIf="searchQuery" class="clear-search-header" (click)="clearSearch()">✕</button>
       </div>
       <app-admin-header></app-admin-header>
     </header>
@@ -16,17 +21,14 @@
       <div *ngIf="isLoading" class="loading-state">Loading...</div>
       <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
 
-      <div class="two-column-layout" *ngIf="!isLoading">
+      <!-- NORMAL VIEW (No Search) -->
+      <div class="two-column-layout" *ngIf="!isLoading && !isSearching">
         
         <!-- Left Panel: Folder Tree -->
         <div class="folder-tree-panel">
           <div class="panel-header">
             <h2>📁 Folder Structure</h2>
-            <button class="btn-primary" (click)="openCreateRootFolderModal()">+ New Folder</button>
-          </div>
-          <div class="folder-tree">
-            <!-- Expand/Collapse All Controls -->
-            <div class="folder-controls">
+            <div class="header-actions">
               <button class="control-btn" (click)="expandAll()" title="Expand All Folders">
                 <span class="control-icon">➕</span> Expand All
               </button>
@@ -34,63 +36,51 @@
                 <span class="control-icon">➖</span> Collapse All
               </button>
             </div>
-
-            <!-- Render Folder Tree -->
+          </div>
+          
+          <div class="folder-tree">
             <ng-container *ngFor="let folder of folderTree">
-              <div class="folder-item-wrapper">
+              <div class="folder-node">
                 <div class="folder-item" 
-                    [class.selected]="selectedFolder?.folder_id === folder.folder_id"
-                    (click)="selectFolder(folder)">
-                  <!-- Expand/Collapse Toggle Button -->
+                     [class.selected]="selectedFolder?.folder_id === folder.folder_id"
+                     (click)="selectFolder(folder)"
+                     [attr.title]="getPermissionTooltip(folder.permissions)">
                   <button class="toggle-btn" 
-                          *ngIf="folder.subfolders.length > 0"
-                          (click)="toggleFolder(folder, $event)">
+                          *ngIf="hasSubfolders(folder)"
+                          (click)="toggleFolderExpand(folder, $event)">
                     <span class="toggle-icon">{{ folder.isExpanded ? '▼' : '▶' }}</span>
                   </button>
-                  <div class="toggle-placeholder" *ngIf="folder.subfolders.length === 0"></div>
+                  <div class="toggle-placeholder" *ngIf="!hasSubfolders(folder)"></div>
                   
+                  <span class="folder-icon">{{ getFolderIcon(folder) }}</span>
                   <span class="folder-name">{{ folder.folder_name }}</span>
-                  <span class="folder-badge">{{ getPermissionIcon(folder.permissions) }}</span>
+                  <span class="folder-badge" [class]="'badge-' + folder.permissions">
+                    {{ getPermissionIcon(folder.permissions) }}
+                  </span>
                   <div class="folder-actions">
-                    <button class="icon-btn" (click)="openCreateSubfolderModal(folder); $event.stopPropagation()" title="Add Subfolder">➕</button>
                     <button class="icon-btn delete-btn" (click)="deleteFolder(folder, $event)" title="Delete">🗑️</button>
                   </div>
                 </div>
                 
-                <!-- Subfolders (Collapsible) -->
-                <div class="subfolders" *ngIf="folder.isExpanded && folder.subfolders.length > 0">
-                  <div *ngFor="let sub of folder.subfolders" class="subfolder-item-wrapper">
-                    <div class="subfolder-item" 
-                        [class.selected]="selectedFolder?.folder_id === sub.folder_id"
-                        (click)="selectFolder(sub)">
-                      <button class="toggle-btn" 
-                              *ngIf="sub.subfolders.length > 0"
-                              (click)="toggleFolder(sub, $event)">
-                        <span class="toggle-icon">{{ sub.isExpanded ? '▼' : '▶' }}</span>
-                      </button>
-                      <div class="toggle-placeholder" *ngIf="sub.subfolders.length === 0"></div>
-                      
-                      <span class="folder-name">{{ sub.folder_name }}</span>
-                      <span class="folder-badge">{{ getPermissionIcon(sub.permissions) }}</span>
-                      <div class="folder-actions">
-                        <button class="icon-btn" (click)="openCreateSubfolderModal(sub); $event.stopPropagation()" title="Add Subfolder">➕</button>
-                        <button class="icon-btn delete-btn" (click)="deleteFolder(sub, $event)" title="Delete">🗑️</button>
-                      </div>
-                    </div>
+                <div class="subfolders" *ngIf="folder.isExpanded && folder.subfolders && folder.subfolders.length > 0">
+                  <div *ngFor="let sub of folder.subfolders" class="subfolder-item"
+                       [class.selected]="selectedFolder?.folder_id === sub.folder_id"
+                       (click)="selectFolder(sub)"
+                       [attr.title]="getPermissionTooltip(sub.permissions)">
+                    <button class="toggle-btn" 
+                            *ngIf="hasSubfolders(sub)"
+                            (click)="toggleFolderExpand(sub, $event)">
+                      <span class="toggle-icon">{{ sub.isExpanded ? '▼' : '▶' }}</span>
+                    </button>
+                    <div class="toggle-placeholder" *ngIf="!hasSubfolders(sub)"></div>
                     
-                    <!-- Third level subfolders -->
-                    <div class="subfolders level-3" *ngIf="sub.isExpanded && sub.subfolders.length > 0">
-                      <div *ngFor="let sub2 of sub.subfolders" class="subfolder-item level-3-item"
-                          [class.selected]="selectedFolder?.folder_id === sub2.folder_id"
-                          (click)="selectFolder(sub2)">
-                        <div class="toggle-placeholder"></div>
-                        <span class="folder-name">{{ sub2.folder_name }}</span>
-                        <span class="folder-badge">{{ getPermissionIcon(sub2.permissions) }}</span>
-                        <div class="folder-actions">
-                          <button class="icon-btn" (click)="openCreateSubfolderModal(sub2); $event.stopPropagation()" title="Add Subfolder">➕</button>
-                          <button class="icon-btn delete-btn" (click)="deleteFolder(sub2, $event)" title="Delete">🗑️</button>
-                        </div>
-                      </div>
+                    <span class="folder-icon">{{ getFolderIcon(sub) }}</span>
+                    <span class="folder-name">{{ sub.folder_name }}</span>
+                    <span class="folder-badge" [class]="'badge-' + sub.permissions">
+                      {{ getPermissionIcon(sub.permissions) }}
+                    </span>
+                    <div class="folder-actions">
+                      <button class="icon-btn delete-btn" (click)="deleteFolder(sub, $event)" title="Delete">🗑️</button>
                     </div>
                   </div>
                 </div>
@@ -98,7 +88,7 @@
             </ng-container>
             
             <div *ngIf="folderTree.length === 0" class="empty-folder-tree">
-              No folders yet. Click "New Folder" to create one.
+              No folders yet. Select a folder and click "New Folder" to create one.
             </div>
           </div>
         </div>
@@ -106,21 +96,23 @@
         <!-- Right Panel: Selected Folder Details -->
         <div class="folder-details-panel" *ngIf="selectedFolder">
           <div class="panel-header">
-            <h2> 📂 {{ selectedFolder.folder_name }}</h2>
-            <button class="btn-upload" (click)="openUploadModal()">+ Upload Document</button>
-          </div>
-
-          <!-- Breadcrumb -->
-          <div class="breadcrumb-trail">
-            <span *ngFor="let crumb of getFolderPath(); let i = index; let last = last">
-              <span *ngIf="i > 0"> / </span>
-              <span [class.breadcrumb-current]="last" [class.breadcrumb-link]="!last">{{ crumb.folder_name }}</span>
-            </span>
+            <div class="header-info">
+              <h2>{{ getFolderIcon(selectedFolder) }} {{ selectedFolder.folder_name }}</h2>
+              <div class="breadcrumb-trail">
+                <span *ngFor="let crumb of getFolderPath(); let i = index; let last = last">
+                  <span *ngIf="i > 0"> / </span>
+                  <span [class.breadcrumb-current]="last" [class.breadcrumb-link]="!last">{{ crumb.folder_name }}</span>
+                </span>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-new-folder" (click)="openCreateSubfolderModal(selectedFolder)">+ New Folder</button>
+              <button class="btn-upload" (click)="openUploadModal()">+ Upload Document</button>
+            </div>
           </div>
 
           <!-- Folder Settings -->
           <div class="folder-settings">
-            <h3> Folder Settings</h3>
             <div class="settings-row">
               <div class="settings-field">
                 <label>Folder Name</label>
@@ -130,22 +122,24 @@
                 <label>Permissions</label>
                 <select [(ngModel)]="selectedFolder.permissions">
                   <option value="public">🌍 Public - Everyone can access</option>
-                  <option value="private">🔒 Private - Only specific users</option>
-                  <option value="restricted">⚠️ Restricted - Limited access</option>
+                  <option value="restricted">🔒 Restricted - Admins and granted employees can access</option>
+                  <option value="private">⚠️ Private - Only explicitly granted users can access</option>
                 </select>
               </div>
-              <button class="btn-save" (click)="updateFolder()">Save Changes</button>
+              <button class="btn-save" (click)="openEditPermissionModal()">Save Changes</button>
             </div>
           </div>
 
           <!-- Subfolders Section -->
           <div class="subfolders-section" *ngIf="getCurrentSubfolders().length > 0">
-            <h3> Subfolders</h3>
+            <h3>📂 Subfolders ({{ getCurrentSubfolders().length }})</h3>
             <div class="subfolder-list">
               <div *ngFor="let sub of getCurrentSubfolders()" class="subfolder-card" (click)="selectFolder(sub)">
+                <span class="subfolder-icon">📁</span>
                 <span class="subfolder-name">{{ sub.folder_name }}</span>
-                <span class="subfolder-badge">{{ getPermissionIcon(sub.permissions) }}</span>
-                <button class="icon-btn small" (click)="openCreateSubfolderModal(sub); $event.stopPropagation()" title="Add Subfolder">➕</button>
+                <span class="permission-badge-small" [class]="'badge-' + sub.permissions">
+                  {{ getPermissionIcon(sub.permissions) }}
+                </span>
                 <button class="icon-btn small delete-btn" (click)="deleteFolder(sub, $event)" title="Delete">🗑️</button>
               </div>
             </div>
@@ -153,43 +147,101 @@
 
           <!-- Documents Section -->
           <div class="documents-section">
-            <h3> Documents</h3>
+            <h3>📄 Documents ({{ getCurrentDocuments().length }})</h3>
             <div *ngIf="getCurrentDocuments().length === 0" class="empty-docs">
               No documents in this folder. Click "Upload Document" to add one.
             </div>
-            <table class="documents-table" *ngIf="getCurrentDocuments().length > 0">
-              <thead>
-                <tr><th>Title</th><th>Category</th><th>Accessibility</th><th>Uploaded</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let doc of getCurrentDocuments()">
-                  <td><strong>{{ doc.title }}</strong><br><small>{{ doc.description }}</small></td>
-                  <td><span class="category-badge">{{ doc.category || 'General' }}</span></td>
-                  <td><span class="access-badge" [class]="doc.accessibility">{{ doc.accessibility }}</span></td>
-                  <td><small>{{ doc.created_at | date:'shortDate' }}</small></td>
-                  <td class="action-buttons">
-                    <button class="action-btn download-btn" (click)="downloadDocument(doc)" title="Download">📥</button>
-                    <button class="action-btn delete-btn" (click)="deleteDocument(doc, $event)" title="Delete">🗑️</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="documents-table-container" *ngIf="getCurrentDocuments().length > 0">
+              <table class="documents-table">
+                <thead>
+                  <tr><th>Title</th><th>Category</th><th>Accessibility</th><th>Uploaded</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let doc of getCurrentDocuments()">
+                    <td><strong>{{ doc.title }}</strong><br><small>{{ doc.description }}</small></td>
+                    <td><span class="category-badge">{{ doc.category || 'General' }}</span></td>
+                    <td><span class="access-badge" [class]="doc.accessibility">{{ doc.accessibility === 'restricted' ? 'Restricted' : (doc.accessibility === 'private' ? 'Private' : 'Public') }}</span></td>
+                    <td><small>{{ doc.created_at | date:'shortDate' }}</small></td>
+                    <td class="action-buttons">
+                      <button class="action-btn download-btn" (click)="downloadDocument(doc)" title="Download">📥</button>
+                      <button class="action-btn delete-btn" (click)="deleteDocument(doc, $event)" title="Delete">🗑️</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <!-- No Folder Selected -->
         <div class="no-folder-selected" *ngIf="!selectedFolder && folderTree.length > 0">
-          <span></span>
-          <p>Select a folder from the left panel to manage its contents.</p>
+          <span>📁</span>
+          <p>Select a folder from the left panel to view and manage its contents.</p>
+          <p class="hint">Click on any folder to select it, then use the buttons on the right to create subfolders or upload documents.</p>
         </div>
 
       </div>
+
+      <!-- SEARCH RESULTS VIEW (File Explorer Style) -->
+      <div *ngIf="!isLoading && isSearching" class="search-results-view">
+        <div class="search-results-header">
+          <h2>🔍 Search Results for "{{ searchQuery }}"</h2>
+          <span class="result-count">{{ searchResults.length }} item(s) found</span>
+        </div>
+        
+        <div *ngIf="searchResults.length === 0" class="no-results">
+          <span class="no-results-icon">🔍</span>
+          <p>No results found for "{{ searchQuery }}"</p>
+          <p class="no-results-hint">Try searching with different keywords</p>
+        </div>
+        
+        <div class="search-results-list">
+          <!-- Folders Section -->
+          <div *ngIf="getFolderResults().length > 0" class="result-section">
+            <h3>📁 Folders</h3>
+            <div *ngFor="let result of getFolderResults()" class="result-item folder-result" (click)="navigateToResult(result)">
+              <span class="result-icon">📁</span>
+              <div class="result-info">
+                <div class="result-name">{{ result.name }}</div>
+                <div class="result-path">{{ result.path }}</div>
+                <div class="result-meta">
+                  <span class="meta-permission" [class]="'perm-' + result.permission">
+                    {{ getPermissionIcon(result.permission || 'public') }} {{ result.permission }}
+                  </span>
+                  <span class="meta-created">by {{ result.created_by || 'System' }}</span>
+                </div>
+              </div>
+              <span class="result-badge folder">Folder</span>
+            </div>
+          </div>
+          
+          <!-- Documents Section -->
+          <div *ngIf="getDocumentResults().length > 0" class="result-section">
+            <h3>📄 Documents</h3>
+            <div *ngFor="let result of getDocumentResults()" class="result-item doc-result" (click)="navigateToResult(result)">
+              <span class="result-icon">{{ result.file_type?.includes('pdf') ? '📕' : (result.file_type?.includes('word') ? '📘' : '📄') }}</span>
+              <div class="result-info">
+                <div class="result-name">{{ result.name }}</div>
+                <div class="result-path">{{ result.path }} / {{ result.folder_name }}</div>
+                <div class="result-meta">
+                  <span class="meta-category">{{ result.category || 'General' }}</span>
+                  <span class="meta-permission" [class]="'perm-' + result.permission">
+                    {{ getPermissionIcon(result.permission || 'public') }} {{ result.permission }}
+                  </span>
+                  <span class="meta-date">{{ result.created_at | date:'shortDate' }}</span>
+                </div>
+              </div>
+              <button class="result-download-btn" (click)="downloadDocumentById(result.id); $event.stopPropagation()" title="Download">📥</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
 
 <!-- Create Folder Modal -->
-<div class="modal-overlay" *ngIf="showFolderModal">
+<div class="modal-overlay" *ngIf="showFolderModal && !isEditingPermissions">
   <div class="modal-container">
     <div class="modal-header">
       <h3>{{ isSubfolderMode ? 'Create Subfolder' : 'Create New Folder' }}</h3>
@@ -198,22 +250,86 @@
     <div class="modal-body">
       <div class="form-group">
         <label>Folder Name</label>
-        <input type="text" [(ngModel)]="inputFolderName" placeholder="Enter folder name" autofocus>
+        <input type="text" [(ngModel)]="createFolderName" placeholder="Enter folder name" autofocus>
       </div>
       <div class="form-group">
         <label>Permissions</label>
-        <select [(ngModel)]="inputFolderPermission">
+        <select [(ngModel)]="createFolderPermission" (change)="onCreatePermissionChange()">
           <option value="public">🌍 Public - Everyone can access</option>
-          <option value="private">🔒 Private - Only specific users</option>
-          <option value="restricted">⚠️ Restricted - Limited access</option>
+          <option value="restricted">🔒 Restricted - Admins and granted employees can access</option>
+          <option value="private">⚠️ Private - Only explicitly granted users can access</option>
         </select>
       </div>
-      <div *ngIf="isSubfolderMode" class="info-note">
-        <span>📌</span> This folder will be created inside "{{ parentFolderName }}"
+      <div class="info-note">
+        <span>📌</span> This folder will be created inside: <strong>{{ selectedFolder?.folder_name || 'Root' }}</strong>
+      </div>
+      
+      <div *ngIf="createFolderPermission !== 'public'" class="user-selection-section">
+        <label class="section-label">Grant Access To (Optional)</label>
+        <div class="user-selection-buttons">
+          <button type="button" class="selection-btn" (click)="openCreateUserSelector()">Select Users</button>
+          <button *ngIf="createFolderPermission === 'private'" type="button" class="selection-btn none-btn" (click)="selectNone()">None (Private only to me)</button>
+        </div>
+        <div *ngIf="selectedUserIds.length > 0" class="selected-users">
+          <strong>{{ selectedUserIds.length }} user(s) selected</strong>
+        </div>
       </div>
     </div>
     <div class="modal-footer-center">
+      <button class="btn-cancel" (click)="showFolderModal = false">Cancel</button>
       <button class="btn-save" (click)="createFolder()">Create Folder</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Permission Confirmation Modal -->
+<div class="modal-overlay" *ngIf="showEditPermissionModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3>Confirm Permission Changes</h3>
+      <button class="modal-close" (click)="cancelEditPermission()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Folder Name</label>
+        <input type="text" [(ngModel)]="editFolderName" placeholder="Enter folder name">
+      </div>
+      <div class="form-group">
+        <label>Permissions</label>
+        <select [(ngModel)]="editFolderPermission">
+          <option value="public">🌍 Public - Everyone can access</option>
+          <option value="restricted">🔒 Restricted - Admins and granted employees can access</option>
+          <option value="private">⚠️ Private - Only explicitly granted users can access</option>
+        </select>
+      </div>
+      
+      <div *ngIf="editFolderPermission !== 'public'" class="user-selection-section">
+        <label class="section-label">Manage User Access</label>
+        <div class="user-selection-buttons">
+          <button type="button" class="selection-btn" (click)="openEditUserSelector()">
+            {{ editSelectedUserIds.length > 0 ? 'Modify Granted Users' : 'Select Users to Grant Access' }}
+          </button>
+          <button *ngIf="editFolderPermission === 'private'" type="button" class="selection-btn none-btn" (click)="selectNone(); editSelectedUserIds = []">None (Private only to me)</button>
+        </div>
+        <div *ngIf="editSelectedUserIds.length > 0" class="selected-users">
+          <strong>{{ editSelectedUserIds.length }} user(s) will have access</strong>
+          <div class="selected-users-list">
+            <span *ngFor="let userId of editSelectedUserIds.slice(0, 5)" class="user-id-badge">UID: {{ userId }}</span>
+            <span *ngIf="editSelectedUserIds.length > 5" class="more-badge">+{{ editSelectedUserIds.length - 5 }} more</span>
+          </div>
+        </div>
+        <div *ngIf="editSelectedUserIds.length === 0" class="selected-users none-selected">
+          <span>⚠️ No users selected. {{ editFolderPermission === 'restricted' ? 'Only admins will have access.' : 'Only you will have access.' }}</span>
+        </div>
+      </div>
+      
+      <div *ngIf="editFolderPermission === 'public' && editExistingGrantedUsers.length > 0" class="info-note warning">
+        <span>⚠️</span> Changing to Public will remove all existing user grants ({{ editExistingGrantedUsers.length }} user(s) will lose access).
+      </div>
+    </div>
+    <div class="modal-footer-center">
+      <button class="btn-cancel" (click)="cancelEditPermission()">Cancel</button>
+      <button class="btn-save" (click)="confirmEditPermission()">Confirm Changes</button>
     </div>
   </div>
 </div>
@@ -229,19 +345,13 @@
       <div class="upload-area" (click)="fileInput.click()">
         <input type="file" #fileInput (change)="onFileSelected($event)" style="display: none">
         <div class="upload-icon">📄</div>
-        <div class="upload-text" *ngIf="!selectedFile">Click to select a file from your computer</div>
-        <div class="upload-text selected" *ngIf="selectedFile">✓ Selected: {{ selectedFile.name }}</div>
-        <div class="upload-hint" *ngIf="!selectedFile">PDF, DOC, DOCX, TXT, XLS, XLSX (Max 10MB)</div>
+        <div class="upload-text" *ngIf="!selectedFile">Click to select a file</div>
+        <div class="upload-text selected" *ngIf="selectedFile">✓ {{ selectedFile.name }}</div>
       </div>
       
       <div class="form-group">
         <label>Document Title</label>
         <input type="text" [(ngModel)]="inputDocTitle" placeholder="Enter document title">
-      </div>
-      
-      <div class="form-group">
-        <label>Description (optional)</label>
-        <textarea [(ngModel)]="inputDocDescription" rows="2" placeholder="Enter description"></textarea>
       </div>
       
       <div class="form-row">
@@ -256,20 +366,37 @@
         </div>
         <div class="form-group">
           <label>Accessibility</label>
-          <select [(ngModel)]="inputDocAccessibility">
-            <option value="public">🌍 Public</option>
-            <option value="private">🔒 Private</option>
-            <option value="restricted">⚠️ Restricted</option>
+          <select [(ngModel)]="inputDocAccessibility" (change)="onDocPermissionChange()">
+            <option value="public">🌍 Public - Everyone can access</option>
+            <option value="restricted">🔒 Restricted - Admins and granted employees can access</option>
+            <option value="private">⚠️ Private - Only explicitly granted users can access</option>
           </select>
         </div>
       </div>
       
       <div class="info-note">
-        <span>ℹ️</span> Uploading to folder: <strong>{{ selectedFolder?.folder_name }}</strong>
+        <span>ℹ️</span> Uploading to: <strong>{{ selectedFolder?.folder_name }}</strong>
       </div>
     </div>
     <div class="modal-footer-center">
-      <button class="btn-save" (click)="uploadDocument()" [disabled]="!selectedFile">Upload Document</button>
+      <button class="btn-cancel" (click)="showDocModal = false">Cancel</button>
+      <button class="btn-save" (click)="uploadDocument()" [disabled]="!selectedFile">Upload</button>
     </div>
   </div>
+</div>
+
+<!-- User Selector Modal -->
+<app-user-selector 
+  *ngIf="showUserSelector"
+  [isOpen]="showUserSelector"
+  [title]="(createFolderPermission === 'restricted' || editFolderPermission === 'restricted') ? 'Select Employees to Grant Access (Admins already have access)' : 'Select Users to Grant Access (Everyone needs permission)'"
+  [mode]="userSelectorMode"
+  [preSelectedUserIds]="selectedUserIds"
+  (closed)="showUserSelector = false"
+  (usersSelected)="onUsersSelected($event)">
+</app-user-selector>
+
+<!-- Permission Info Message -->
+<div class="permission-info" *ngIf="showPermissionInfo">
+  {{ permissionInfoMessage }}
 </div>

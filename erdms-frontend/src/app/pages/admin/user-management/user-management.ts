@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { StateService } from '../../../services/state';
-import { PendingActionsService } from '../../../services/pending-actions.service';
 import { AuthService } from '../../../services/auth.service';
+import { PendingActionsService } from '../../../services/pending-actions.service';
 import { SidebarComponent } from '../../../components/sidebar/sidebar.component';
 import { AdminHeaderComponent } from '../../../components/admin-header/admin-header.component';
 import { User } from '../../../models/backend-models';
@@ -78,6 +78,18 @@ export class UserManagementComponent implements OnInit {
     return roleId === 1 ? 'role-badge-admin' : 'role-badge-employee';
   }
 
+  // Navigation Handlers
+  navToDashboard() { this.router.navigate(['/admin/dashboard']); }
+  navToDocManagement() { this.router.navigate(['/admin/folder-management']); }
+  navToUserManagement() { this.router.navigate(['/admin/user-management']); }
+  navToAuditLogs() { this.router.navigate(['/admin/audit-logs']); }
+
+  executeSignOut() {
+    if (confirm('Are you sure you want to sign out?')) {
+      this.auth.logout();
+    }
+  }
+
   openCreateModal() {
     this.isEditing = false;
     this.resetForm();
@@ -85,6 +97,10 @@ export class UserManagementComponent implements OnInit {
   }
 
   openEditModal(user: User) {
+    if (user.user_id === 3) {
+      alert('Cannot edit the Super Admin account.');
+      return;
+    }
     this.isEditing = true;
     this.editingUserUid = user.user_id;
     this.inputFullName = user.name;
@@ -93,6 +109,7 @@ export class UserManagementComponent implements OnInit {
     this.selectedRoleId = user.role_id;
     this.showCreateModal = true;
   }
+
 
   closeCreateModal() {
     this.showCreateModal = false;
@@ -108,6 +125,32 @@ export class UserManagementComponent implements OnInit {
     this.isLoading = true;
 
     if (this.isEditing && this.editingUserUid !== null) {
+      // Get original user to check if role is changing
+      const originalUser = this.usersList.find(u => u.user_id === this.editingUserUid);
+      const isRoleChanging = originalUser && originalUser.role_id !== this.selectedRoleId;
+      const isTargetAdmin = originalUser?.role_id === 1;
+      const isCurrentUserSuperAdmin = this.auth.currentUser()?.user_id === 3;
+      
+      // If role is changing AND not Super Admin, require 2FA
+      if (isRoleChanging && !isCurrentUserSuperAdmin) {
+        // Make sure new_role_id is sent as a NUMBER, not string
+        const result = await this.pendingActions.requestRoleChange(
+          this.editingUserUid, 
+          Number(this.selectedRoleId)  // ← Convert to number
+        );
+        if (result) {
+          alert(`Role change request for "${this.inputFullName}" has been sent to Super Admin for approval.`);
+          this.closeCreateModal();
+          this.isLoading = false;
+          return;
+        } else {
+          alert('Failed to submit request. A pending request may already exist.');
+          this.isLoading = false;
+          return;
+        }
+      }
+      
+      // No role change or Super Admin - update directly
       const updateData: any = {};
       if (this.inputFullName.trim() !== '') updateData.name = this.inputFullName.trim();
       if (this.inputEmail.trim() !== '') updateData.email = this.inputEmail.trim();
@@ -122,6 +165,7 @@ export class UserManagementComponent implements OnInit {
         alert('Failed to update user.');
       }
     } else {
+      // Create new user
       const result = await this.state.createUser({
         name: this.inputFullName.trim(),
         email: this.inputEmail.trim(),
@@ -144,11 +188,14 @@ export class UserManagementComponent implements OnInit {
       alert('You cannot deactivate your own account.');
       return;
     }
+
+    if (user.user_id === 3) {
+      alert('Cannot change status of Super Admin account.');
+      return;
+    }
     
     const newStatus = user.status === 'active' ? 'inactive' : 'active';
     const actionType = newStatus === 'active' ? 'activate' : 'deactivate';
-    
-    // Check if current user is Super Admin (user_id = 3)
     const currentUserId = this.auth.currentUser()?.user_id;
     
     if (currentUserId === 3) {
@@ -168,25 +215,52 @@ export class UserManagementComponent implements OnInit {
       if (result) {
         alert(`Request to ${actionType} "${user.name}" has been sent to Super Admin for approval.`);
       } else {
-        alert('Failed to send request. Please try again.');
+        alert('Failed to send request. A pending request may already exist.');
       }
     }
   }
 
-  async resetUserPassword(user: User) {
-    if (confirm(`Reset password for "${user.name}"?`)) {
-      const result = await this.state.resetUserPassword(user.user_id);
-      if (result && result.temporary_password) {
-        alert(`Password reset successful!\n\nNew Temporary Password: ${result.temporary_password}`);
-      } else {
-        alert('Failed to reset password.');
-      }
+async resetUserPassword(user: User) {
+  const currentUser = this.auth.currentUser();
+  const isTargetAdmin = user.role_id === 1;
+  const isCurrentUserSuperAdmin = currentUser?.user_id === 3;
+
+  if (user.user_id === 3) {
+    alert('Cannot reset password for Super Admin account.');
+    return;
+  }
+  
+  // Admin resetting another admin's password needs approval
+  if (isTargetAdmin && !isCurrentUserSuperAdmin) {
+    const result = await this.pendingActions.requestPasswordReset(Number(user.user_id));  // ← Ensure number
+    if (result) {
+      alert(`Password reset request for "${user.name}" has been sent to Super Admin for approval.`);
+    } else {
+      alert('Failed to submit request. A pending request may already exist.');
+    }
+    return;
+  }
+  
+  // Direct reset for employees or Super Admin
+  if (confirm(`Reset password for "${user.name}"? A new temporary password will be generated.`)) {
+    const result = await this.state.resetUserPassword(user.user_id);
+    if (result && result.temporary_password) {
+      alert(`Password reset successful!\n\nNew Temporary Password: ${result.temporary_password}`);
+      await this.loadUsers();
+    } else {
+      alert('Failed to reset password.');
     }
   }
+}
 
   async removeUserAccount(user: User) {
     if (user.user_id === this.auth.currentUser()?.user_id) {
       alert('You cannot delete your own account.');
+      return;
+    }
+
+    if (user.user_id === 3) {
+      alert('Cannot delete the Super Admin account.');
       return;
     }
     
@@ -207,5 +281,9 @@ export class UserManagementComponent implements OnInit {
     this.inputPassword = '';
     this.selectedRoleId = 2;
     this.editingUserUid = null;
+  }
+
+  isSuperAdmin(userId: number): boolean {
+    return userId === 3;
   }
 }

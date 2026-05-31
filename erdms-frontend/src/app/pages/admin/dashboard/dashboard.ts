@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -14,7 +14,7 @@ import { AdminHeaderComponent } from '../../../components/admin-header/admin-hea
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   logSearchQuery = '';
   selectedLogTypeFilter = 'All Logs';
   
@@ -22,6 +22,12 @@ export class DashboardComponent implements OnInit {
   allGlobalLogs: any[] = [];
   isLoading = true;
   errorMessage = '';
+  
+  // Real-time counters
+  actionsLast24Hours = 0;
+  actionsLastHour = 0;
+  actionsToday = 0;
+  private refreshInterval: any;
 
   constructor(
     private router: Router, 
@@ -31,6 +37,36 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadDashboardData();
+    this.startRealTimeUpdates();
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
+  }
+
+  startRealTimeUpdates() {
+    // Refresh counters every 10 seconds
+    this.refreshInterval = setInterval(() => {
+      this.updateRealTimeCounters();
+    }, 10000);
+  }
+
+  async updateRealTimeCounters() {
+    try {
+      const logs = await this.state.getAllLogs({ limit: 1000 });
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      this.actionsLast24Hours = logs.logs.filter(log => new Date(log.timestamp) >= oneDayAgo).length;
+      this.actionsLastHour = logs.logs.filter(log => new Date(log.timestamp) >= oneHourAgo).length;
+      this.actionsToday = logs.logs.filter(log => new Date(log.timestamp) >= todayStart).length;
+    } catch (error) {
+      console.error('Failed to update counters:', error);
+    }
   }
 
   async loadDashboardData() {
@@ -38,11 +74,12 @@ export class DashboardComponent implements OnInit {
     try {
       const [stats, logs] = await Promise.all([
         this.state.getDashboardStats(),
-        this.state.getAllLogs({ limit: 100 })
+        this.state.getAllLogs({ limit: 1000 })
       ]);
       
       this.dashboardStats = stats;
       this.allGlobalLogs = logs.logs || [];
+      await this.updateRealTimeCounters();
     } catch (error: any) {
       this.errorMessage = error.message || 'Failed to load dashboard data';
       console.error('Dashboard error:', error);
@@ -51,6 +88,7 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  // Dashboard stats computed properties
   get totalRegisteredUsers(): number {
     return this.dashboardStats?.users?.total || 0;
   }
@@ -124,6 +162,7 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  // Navigation
   navToDashboard() { this.router.navigate(['/admin/dashboard']); }
   navToDocManagement() { this.router.navigate(['/admin/folder-management']); }
   navToUserManagement() { this.router.navigate(['/admin/user-management']); }
