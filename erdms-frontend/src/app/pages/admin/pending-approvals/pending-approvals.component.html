@@ -6,7 +6,7 @@
     <header class="main-header">
       <div class="header-title">
         <h1>Pending Approvals</h1>
-        <p>Review and approve/reject account status change requests from other admins</p>
+        <p>Review and approve/reject account status change requests, role changes, and password resets</p>
       </div>
       <app-admin-header></app-admin-header>
     </header>
@@ -24,32 +24,40 @@
         ⚠️ {{ errorMessage }}
       </div>
 
-      <!-- Pending Actions Table -->
-      <div *ngIf="!isLoading && !errorMessage" class="approvals-panel">
+      <!-- Pending Actions -->
+      <div class="approvals-panel">
         <div class="panel-header">
-          <h2>Pending Status Change Requests</h2>
-          <span class="badge">{{ pendingActions.length }} pending</span>
+          <h2>Pending Approval Requests</h2>
+          <div class="filter-group">
+            <label>Filter by Type:</label>
+            <select [(ngModel)]="actionFilter" (change)="applyActionFilter()" class="filter-select">
+              <option value="all">All Requests</option>
+              <option value="activate">Activate Account</option>
+              <option value="deactivate">Deactivate Account</option>
+              <option value="role_change">Role Change</option>
+              <option value="password_reset">Password Reset</option>
+            </select>
+          </div>
         </div>
 
-        <div *ngIf="pendingActions.length === 0" class="empty-state">
+        <div *ngIf="filteredPendingActions.length === 0" class="empty-state">
           <span class="empty-icon">✅</span>
           <p>No pending requests</p>
-          <p class="empty-hint">All account status change requests have been processed.</p>
         </div>
 
-        <table class="approvals-table" *ngIf="pendingActions.length > 0">
+        <table class="approvals-table" *ngIf="filteredPendingActions.length > 0">
           <thead>
             <tr>
               <th>Request ID</th>
               <th>Requested By</th>
               <th>Target User</th>
-              <th>Action</th>
+              <th>Action Type</th>
               <th>Requested At</th>
               <th style="text-align: center">Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let action of pendingActions">
+            <tr *ngFor="let action of filteredPendingActions">
               <td>#{{ action.pending_id }}</td>
               <td>
                 <strong>{{ action.requested_by_name }}</strong>
@@ -62,8 +70,8 @@
                 <small>{{ action.target_user_email }} (UID: {{ action.target_user_id }})</small>
               </td>
               <td>
-                <span class="action-badge" [class.activate]="action.action_type === 'activate'" [class.deactivate]="action.action_type === 'deactivate'">
-                  {{ action.action_type === 'activate' ? 'Activate Account' : 'Deactivate Account' }}
+                <span class="action-badge" [class]="getActionBadgeClass(action.action_type)">
+                  {{ getActionLabel(action.action_type) }}
                 </span>
               </td>
               <td>{{ formatDate(action.requested_at) }}</td>

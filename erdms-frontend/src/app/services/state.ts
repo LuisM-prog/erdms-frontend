@@ -327,11 +327,11 @@ export class StateService {
   // PERMISSION API METHODS
   // ==========================================================================
 
-  async getAllUsersSimple(): Promise<{ user_id: number; name: string; email: string; role_id: number; status: string }[]> {
+  async getAllUsersSimple(): Promise<{ user_id: number; name: string; email: string; role_id: number; role_name: string }[]> {
     try {
       return await firstValueFrom(this.http.get('/permissions/users'));
     } catch (error) {
-      console.error('Failed to fetch users list:', error);
+      console.error('Failed to fetch users:', error);
       return [];
     }
   }

@@ -12,9 +12,40 @@ export class PendingActionsService {
   // Request to deactivate/activate a user (requires 2FA approval)
   async requestUserStatusChange(targetUserId: number, actionType: 'activate' | 'deactivate'): Promise<{ message: string; pending_id: number } | null> {
     try {
-      return await firstValueFrom(this.http.post('/pending-actions/request', { target_user_id: targetUserId, action_type: actionType }));
+      return await firstValueFrom(this.http.post('/pending-actions/request', { 
+        target_user_id: Number(targetUserId), 
+        action_type: actionType 
+      }));
     } catch (error) {
       console.error('Failed to request status change:', error);
+      return null;
+    }
+  }
+
+  // Request password reset (requires 2FA for admin-to-admin)
+  async requestPasswordReset(targetUserId: number): Promise<{ message: string; pending_id: number } | null> {
+    try {
+      return await firstValueFrom(this.http.post('/pending-actions/password-reset-request', { 
+        target_user_id: Number(targetUserId) 
+      }));
+    } catch (error) {
+      console.error('Failed to request password reset:', error);
+      return null;
+    }
+  }
+
+  // Request role change (requires 2FA approval)
+  async requestRoleChange(targetUserId: number, newRoleId: number): Promise<{ message: string; pending_id: number } | null> {
+    try {
+      // Ensure both values are numbers
+      const payload = {
+        target_user_id: Number(targetUserId),
+        new_role_id: Number(newRoleId)
+      };
+      console.log('Sending role change request:', payload);
+      return await firstValueFrom(this.http.post('/pending-actions/role-change-request', payload));
+    } catch (error) {
+      console.error('Failed to request role change:', error);
       return null;
     }
   }
