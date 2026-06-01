@@ -2,6 +2,13 @@ import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import generatePassword from '../utils/generatePassword.js';
 
+// Email validation regex
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+const isValidEmail = (email) => {
+    return EMAIL_REGEX.test(email);
+};
+
 // GET all users (Admin only)
 export const getAllUsers = (req, res) => {
     db.query(
@@ -49,6 +56,12 @@ export const createUser = (req, res) => {
         return res.status(400).json({ message: 'Name, email, and role_id are required' });
     }
     
+    // Validate email format
+    if (!isValidEmail(email)) {
+        return res.status(400).json({ message: 'Please enter a valid email address (e.g., user@example.com)' });
+    }
+    
+    // Check if email exists
     db.query('SELECT * FROM Users WHERE email = ?', [email], (err, results) => {
         if (err) {
             return res.status(500).json({ message: 'Database error', error: err.message });
@@ -68,11 +81,9 @@ export const createUser = (req, res) => {
                     return res.status(500).json({ message: 'Failed to create user', error: err.message });
                 }
                 
-                // Use EXACT ENUM value: 'create_user'
                 db.query(
                     'INSERT INTO Logs (user_id, action) VALUES (?, "create_user")',
-                    [adminId],
-                    (logErr) => { if (logErr) console.error('Log error:', logErr.message); }
+                    [adminId]
                 );
                 
                 res.status(201).json({
@@ -91,84 +102,66 @@ export const updateUser = (req, res) => {
     const { name, email, role_id, status } = req.body;
     const adminId = req.user.user_id;
     
-    db.query('SELECT name, email, role_id, status FROM Users WHERE user_id = ?', [id], (err, oldData) => {
-        if (err) {
-            return res.status(500).json({ message: 'Database error', error: err.message });
-        }
-        if (oldData.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        
-        const oldUser = oldData[0];
-        const changes = [];
-        
-        if (name && name !== oldUser.name) {
-            changes.push(`changed name from "${oldUser.name}" to "${name}"`);
-        }
-        if (email && email !== oldUser.email) {
-            changes.push(`changed email from "${oldUser.email}" to "${email}"`);
-        }
-        if (role_id && parseInt(role_id) !== oldUser.role_id) {
-            const oldRole = oldUser.role_id === 1 ? 'Admin' : 'Employee';
-            const newRole = role_id == 1 ? 'Admin' : 'Employee';
-            changes.push(`changed role from ${oldRole} to ${newRole}`);
-        }
-        if (status && status !== oldUser.status) {
-            changes.push(`changed status from ${oldUser.status} to ${status}`);
-        }
-        
-        if (changes.length === 0) {
-            return res.status(400).json({ message: 'No changes detected' });
-        }
-        
-        let updates = [];
-        let values = [];
-        
-        if (name) {
-            updates.push('name = ?');
-            values.push(name);
-        }
-        if (email) {
-            updates.push('email = ?');
-            values.push(email);
-        }
-        if (role_id) {
-            updates.push('role_id = ?');
-            values.push(role_id);
-        }
-        if (status) {
-            if (!['active', 'inactive'].includes(status)) {
-                return res.status(400).json({ message: 'Status must be active or inactive' });
+    // Validate email format if email is being updated
+    if (email && !isValidEmail(email)) {
+        return res.status(400).json({ message: 'Please enter a valid email address (e.g., user@example.com)' });
+    }
+    
+    let updates = [];
+    let values = [];
+    
+    if (name) {
+        updates.push('name = ?');
+        values.push(name);
+    }
+    if (email) {
+        // Check if email already taken by another user
+        db.query('SELECT * FROM Users WHERE email = ? AND user_id != ?', [email, id], (err, results) => {
+            if (err) return res.status(500).json({ message: 'Database error' });
+            if (results.length > 0) {
+                return res.status(400).json({ message: 'Email already in use' });
             }
-            updates.push('status = ?');
-            values.push(status);
+        });
+        updates.push('email = ?');
+        values.push(email);
+    }
+    if (role_id) {
+        updates.push('role_id = ?');
+        values.push(role_id);
+    }
+    if (status) {
+        if (!['active', 'inactive'].includes(status)) {
+            return res.status(400).json({ message: 'Status must be active or inactive' });
         }
-        
-        values.push(id);
-        
-        db.query(
-            `UPDATE Users SET ${updates.join(', ')} WHERE user_id = ?`,
-            values,
-            (err, result) => {
-                if (err) {
-                    return res.status(500).json({ message: 'Database error', error: err.message });
-                }
-                if (result.affectedRows === 0) {
-                    return res.status(404).json({ message: 'User not found' });
-                }
-                
-                // Log with readable message
-                const changeText = changes.join(', ');
-                db.query(
-                    'INSERT INTO Logs (user_id, action, details) VALUES (?, "edit_user", ?)',
-                    [adminId, `${changeText}`],
-                    (logErr) => { if (logErr) console.error('Log error:', logErr.message); }
-                );
-                
-                res.json({ message: 'User updated successfully' });
+        updates.push('status = ?');
+        values.push(status);
+    }
+    
+    if (updates.length === 0) {
+        return res.status(400).json({ message: 'No fields to update' });
+    }
+    
+    values.push(id);
+    
+    db.query(
+        `UPDATE Users SET ${updates.join(', ')} WHERE user_id = ?`,
+        values,
+        (err, result) => {
+            if (err) {
+                return res.status(500).json({ message: 'Database error', error: err.message });
             }
-        );
-    });
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+            
+            db.query(
+                'INSERT INTO Logs (user_id, action) VALUES (?, "edit_user")',
+                [adminId]
+            );
+            
+            res.json({ message: 'User updated successfully' });
+        }
+    );
 };
 
 // TOGGLE user status
@@ -279,7 +272,6 @@ export const getMyProfile = (req, res) => {
     );
 };
 
-// UPDATE own profile
 // UPDATE own profile (name, email only - no role/status)
 export const updateMyProfile = (req, res) => {
     const userId = req.user.user_id;
@@ -289,71 +281,41 @@ export const updateMyProfile = (req, res) => {
         return res.status(400).json({ message: 'Nothing to update' });
     }
     
-    // Get old values first
-    db.query('SELECT name, email FROM Users WHERE user_id = ?', [userId], (err, oldData) => {
-        if (err) {
-            return res.status(500).json({ message: 'Database error', error: err.message });
-        }
-        
-        const oldName = oldData[0]?.name;
-        const oldEmail = oldData[0]?.email;
-        let changes = [];
-        let hasChange = false;
-        
-        if (name && name !== oldName) {
-            changes.push(`changed name from "${oldName}" to "${name}"`);
-            hasChange = true;
-        }
-        if (email && email !== oldEmail) {
-            changes.push(`changed email from "${oldEmail}" to "${email}"`);
-            hasChange = true;
-        }
-        
-        if (!hasChange) {
-            return res.status(400).json({ message: 'No changes detected' });
-        }
-        
-        let updates = [];
-        let values = [];
-        
-        if (name) {
-            updates.push('name = ?');
-            values.push(name);
-        }
-        if (email) {
-            // Check if email already taken
-            db.query('SELECT * FROM Users WHERE email = ? AND user_id != ?', [email, userId], (err, results) => {
-                if (err) return res.status(500).json({ message: 'Database error' });
-                if (results.length > 0) {
-                    return res.status(400).json({ message: 'Email already in use' });
-                }
-            });
-            updates.push('email = ?');
-            values.push(email);
-        }
-        
-        values.push(userId);
-        
-        db.query(
-            `UPDATE Users SET ${updates.join(', ')} WHERE user_id = ?`,
-            values,
-            (err) => {
-                if (err) {
-                    return res.status(500).json({ message: 'Database error', error: err.message });
-                }
-                
-                // Log the profile update
-                const changeText = changes.join(', ');
-                db.query(
-                    'INSERT INTO Logs (user_id, action, details) VALUES (?, "edit_profile", ?)',
-                    [userId, changeText],
-                    (logErr) => { if (logErr) console.error('Failed to log profile update:', logErr.message); }
-                );
-                
-                res.json({ message: 'Profile updated successfully', changes: changes });
+    // Validate email format if email is being updated
+    if (email && !isValidEmail(email)) {
+        return res.status(400).json({ message: 'Please enter a valid email address (e.g., user@example.com)' });
+    }
+    
+    let updates = [];
+    let values = [];
+    
+    if (name) {
+        updates.push('name = ?');
+        values.push(name);
+    }
+    if (email) {
+        db.query('SELECT * FROM Users WHERE email = ? AND user_id != ?', [email, userId], (err, results) => {
+            if (err) return res.status(500).json({ message: 'Database error' });
+            if (results.length > 0) {
+                return res.status(400).json({ message: 'Email already in use' });
             }
-        );
-    });
+        });
+        updates.push('email = ?');
+        values.push(email);
+    }
+    
+    values.push(userId);
+    
+    db.query(
+        `UPDATE Users SET ${updates.join(', ')} WHERE user_id = ?`,
+        values,
+        (err) => {
+            if (err) {
+                return res.status(500).json({ message: 'Database error', error: err.message });
+            }
+            res.json({ message: 'Profile updated successfully' });
+        }
+    );
 };
 
 // CHANGE own password

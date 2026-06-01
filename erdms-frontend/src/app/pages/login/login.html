@@ -16,12 +16,18 @@
       
       <div>
         <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #334155;">Email Address</label>
-        <input type="email" 
-               [(ngModel)]="loginEmail" 
-               name="loginEmail" 
-               placeholder=" " 
-               required
-               style="width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none;">
+        <input 
+          type="email" 
+          [(ngModel)]="loginEmail" 
+          (input)="onEmailInput()"
+          name="loginEmail" 
+          placeholder="" 
+          required
+          [style.border-color]="emailError ? '#dc2626' : '#cbd5e1'"
+          style="width: 100%; padding: 12px 14px; border-width: 1px; border-style: solid; border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none;">
+        <div *ngIf="emailError" style="font-size: 11px; color: #dc2626; margin-top: 4px;">
+          {{ emailError }}
+        </div>
       </div>
 
       <div>
@@ -29,14 +35,14 @@
         <input type="password" 
                [(ngModel)]="loginPassword" 
                name="loginPassword" 
-               placeholder="" 
+               placeholder=" " 
                required
                style="width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none;">
       </div>
 
       <button type="submit" 
-              [disabled]="isLoading"
-              [style.opacity]="isLoading ? 0.7 : 1"
+              [disabled]="isLoading || emailError"
+              [style.opacity]="isLoading || emailError ? 0.7 : 1"
               style="width: 100%; padding: 12px; background-color: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">
         {{ isLoading ? 'Signing in...' : 'Sign In' }}
       </button>
