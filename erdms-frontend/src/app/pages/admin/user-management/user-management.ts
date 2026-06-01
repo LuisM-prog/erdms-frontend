@@ -8,6 +8,7 @@ import { PendingActionsService } from '../../../services/pending-actions.service
 import { SidebarComponent } from '../../../components/sidebar/sidebar.component';
 import { AdminHeaderComponent } from '../../../components/admin-header/admin-header.component';
 import { User } from '../../../models/backend-models';
+import { EmailValidationService } from '../../../services/email-validation.service';
 
 @Component({
   selector: 'app-user-management',
@@ -41,7 +42,8 @@ export class UserManagementComponent implements OnInit {
     private router: Router, 
     private state: StateService,
     public auth: AuthService,
-    private pendingActions: PendingActionsService
+    private pendingActions: PendingActionsService,
+    private emailValidation: EmailValidationService
   ) {}
 
   ngOnInit(): void {
@@ -96,19 +98,19 @@ export class UserManagementComponent implements OnInit {
     this.showCreateModal = true;
   }
 
-  openEditModal(user: User) {
-    if (user.user_id === 3) {
-      alert('Cannot edit the Super Admin account.');
-      return;
-    }
-    this.isEditing = true;
-    this.editingUserUid = user.user_id;
-    this.inputFullName = user.name;
-    this.inputEmail = user.email;
-    this.inputPassword = '';
-    this.selectedRoleId = user.role_id;
-    this.showCreateModal = true;
+openEditModal(user: User) {
+  if (user.user_id === 3) {
+    alert('Cannot edit the Super Admin account.');
+    return;
   }
+  this.isEditing = true;
+  this.editingUserUid = user.user_id;
+  this.inputFullName = user.name;
+  this.inputEmail = user.email;
+  this.inputPassword = '';
+  this.selectedRoleId = user.role_id;
+  this.showCreateModal = true;
+}
 
 
   closeCreateModal() {
@@ -116,72 +118,75 @@ export class UserManagementComponent implements OnInit {
     this.resetForm();
   }
 
-  async submitNewAccount() {
-    if (!this.inputFullName.trim() || !this.inputEmail.trim()) {
-      alert('Full Name and Email are required fields.');
-      return;
-    }
-
-    this.isLoading = true;
-
-    if (this.isEditing && this.editingUserUid !== null) {
-      // Get original user to check if role is changing
-      const originalUser = this.usersList.find(u => u.user_id === this.editingUserUid);
-      const isRoleChanging = originalUser && originalUser.role_id !== this.selectedRoleId;
-      const isTargetAdmin = originalUser?.role_id === 1;
-      const isCurrentUserSuperAdmin = this.auth.currentUser()?.user_id === 3;
-      
-      // If role is changing AND not Super Admin, require 2FA
-      if (isRoleChanging && !isCurrentUserSuperAdmin) {
-        // Make sure new_role_id is sent as a NUMBER, not string
-        const result = await this.pendingActions.requestRoleChange(
-          this.editingUserUid, 
-          Number(this.selectedRoleId)  // ← Convert to number
-        );
-        if (result) {
-          alert(`Role change request for "${this.inputFullName}" has been sent to Super Admin for approval.`);
-          this.closeCreateModal();
-          this.isLoading = false;
-          return;
-        } else {
-          alert('Failed to submit request. A pending request may already exist.');
-          this.isLoading = false;
-          return;
-        }
-      }
-      
-      // No role change or Super Admin - update directly
-      const updateData: any = {};
-      if (this.inputFullName.trim() !== '') updateData.name = this.inputFullName.trim();
-      if (this.inputEmail.trim() !== '') updateData.email = this.inputEmail.trim();
-      if (this.selectedRoleId !== undefined) updateData.role_id = this.selectedRoleId;
-      
-      const success = await this.state.updateUser(this.editingUserUid, updateData);
-      if (success) {
-        alert('User updated successfully!');
-        await this.loadUsers();
-        this.closeCreateModal();
-      } else {
-        alert('Failed to update user.');
-      }
-    } else {
-      // Create new user
-      const result = await this.state.createUser({
-        name: this.inputFullName.trim(),
-        email: this.inputEmail.trim(),
-        role_id: this.selectedRoleId as 1 | 2
-      });
-      
-      if (result && result.temporary_password) {
-        alert(`User created successfully!\n\nTemporary Password: ${result.temporary_password}`);
-        await this.loadUsers();
-        this.closeCreateModal();
-      } else {
-        alert('Failed to create user.');
-      }
-    }
-    this.isLoading = false;
+async submitNewAccount() {
+  if (!this.inputFullName.trim() || !this.inputEmail.trim()) {
+    alert('Full Name and Email are required fields.');
+    return;
   }
+  
+  // Validate email format
+  const emailError = this.emailValidation.getEmailValidationError(this.inputEmail.trim());
+  if (emailError) {
+    alert(emailError);
+    return;
+  }
+
+  this.isLoading = true;
+
+  if (this.isEditing && this.editingUserUid !== null) {
+    // Get original user to check if role is changing
+    const originalUser = this.usersList.find(u => u.user_id === this.editingUserUid);
+    const isRoleChanging = originalUser && originalUser.role_id !== this.selectedRoleId;
+    const isTargetAdmin = originalUser?.role_id === 1;
+    const isCurrentUserSuperAdmin = this.auth.currentUser()?.user_id === 3;
+    
+    // If role is changing AND not Super Admin, require 2FA
+    if (isRoleChanging && !isCurrentUserSuperAdmin) {
+      const result = await this.pendingActions.requestRoleChange(this.editingUserUid, Number(this.selectedRoleId));
+      if (result) {
+        alert(`Role change request for "${this.inputFullName}" has been sent to Super Admin for approval.`);
+        this.closeCreateModal();
+        this.isLoading = false;
+        return;
+      } else {
+        alert('Failed to submit request. A pending request may already exist.');
+        this.isLoading = false;
+        return;
+      }
+    }
+    
+    // No role change or Super Admin - update directly
+    const updateData: any = {};
+    if (this.inputFullName.trim() !== '') updateData.name = this.inputFullName.trim();
+    if (this.inputEmail.trim() !== '') updateData.email = this.inputEmail.trim();
+    if (this.selectedRoleId !== undefined) updateData.role_id = this.selectedRoleId;
+    
+    const success = await this.state.updateUser(this.editingUserUid, updateData);
+    if (success) {
+      alert('User updated successfully!');
+      await this.loadUsers();
+      this.closeCreateModal();
+    } else {
+      alert('Failed to update user.');
+    }
+  } else {
+    // Create new user
+    const result = await this.state.createUser({
+      name: this.inputFullName.trim(),
+      email: this.inputEmail.trim(),
+      role_id: this.selectedRoleId as 1 | 2
+    });
+    
+    if (result && result.temporary_password) {
+      alert(`User created successfully!\n\nTemporary Password: ${result.temporary_password}\n\nPlease provide this to the user. They should change it after first login.`);
+      await this.loadUsers();
+      this.closeCreateModal();
+    } else {
+      alert('Failed to create user.');
+    }
+  }
+  this.isLoading = false;
+}
 
   async toggleUserStatus(user: User) {
     if (user.user_id === this.auth.currentUser()?.user_id) {

@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { UserSidebarComponent } from '../../../components/user-sidebar/user-sidebar.component';
 import { StateService } from '../../../services/state';
 import { AuthService } from '../../../services/auth.service';
+import { EmailValidationService } from '../../../services/email-validation.service';
 
 @Component({
   selector: 'app-user-profile',
@@ -40,11 +41,12 @@ export class UserProfileComponent implements OnInit {
   showNewPassword = false;
   showConfirmPassword = false;
 
-  constructor(
-    private router: Router,
-    private state: StateService,
-    public auth: AuthService
-  ) {}
+constructor(
+  private router: Router,
+  private state: StateService,
+  public auth: AuthService,
+  private emailValidation: EmailValidationService  // Add this
+) {}
 
   async ngOnInit() {
     await this.loadProfile();
@@ -162,34 +164,41 @@ export class UserProfileComponent implements OnInit {
     this.successMessage = '';
   }
 
-  async saveProfileChanges() {
-    if (!this.editedName.trim() || !this.editedEmail.trim()) {
-      this.errorMessage = 'Name and email cannot be empty';
-      return;
-    }
-
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    const success = await this.state.updateMyProfile({
-      name: this.editedName.trim(),
-      email: this.editedEmail.trim()
-    });
-
-    if (success) {
-      this.successMessage = 'Profile updated successfully!';
-      await this.loadProfile();
-      this.isEditing = false;
-      
-      setTimeout(() => {
-        this.successMessage = '';
-      }, 3000);
-    } else {
-      this.errorMessage = 'Failed to update profile. Email may already be in use.';
-    }
-    this.isLoading = false;
+async saveProfileChanges() {
+  if (!this.editedName.trim() || !this.editedEmail.trim()) {
+    this.errorMessage = 'Name and email cannot be empty';
+    return;
   }
+  
+  // Validate email format
+  const emailError = this.emailValidation.getEmailValidationError(this.editedEmail.trim());
+  if (emailError) {
+    this.errorMessage = emailError;
+    return;
+  }
+
+  this.isLoading = true;
+  this.errorMessage = '';
+  this.successMessage = '';
+
+  const success = await this.state.updateMyProfile({
+    name: this.editedName.trim(),
+    email: this.editedEmail.trim()
+  });
+
+  if (success) {
+    this.successMessage = 'Profile updated successfully!';
+    await this.loadProfile();
+    this.isEditing = false;
+    
+    setTimeout(() => {
+      this.successMessage = '';
+    }, 3000);
+  } else {
+    this.errorMessage = 'Failed to update profile. Email may already be in use or invalid.';
+  }
+  this.isLoading = false;
+}
 
   async changePassword() {
     this.errorMessage = '';
